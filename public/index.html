@@ -25,15 +25,12 @@
       background: #1f242c; border: 2px dashed #8957e5; border-radius: 10px;
       padding: 15px; max-width: 500px; margin: 0 auto 20px auto; display: none;
     }
-    .card-box {
-      background: #161b22; border: 1px solid #8957e5; border-radius: 8px;
-      padding: 10px; margin-top: 10px; color: #d2a8ff;
-    }
+    .card-box { background: #161b22; border: 1px solid #8957e5; border-radius: 8px; padding: 10px; margin-top: 10px; color: #d2a8ff; }
     .boards-container { display: flex; justify-content: center; gap: 15px; flex-wrap: wrap; }
     .board-box { background: #161b22; border: 2px solid #30363d; border-radius: 12px; padding: 12px; }
     .board-box.live { border-color: #2ea043; }
     .board-box.dead { border-color: #da3633; }
-    .board-box.enemy { border-color: #d29922; opacity: 0.5; pointer-events: none; } /* Bloqueado inicialmente */
+    .board-box.enemy { border-color: #d29922; opacity: 0.5; pointer-events: none; }
     .board-box.enemy.active { opacity: 1; pointer-events: auto; }
     .board-title { font-size: 1rem; margin-bottom: 8px; font-weight: bold; }
     .grid { display: grid; grid-template-columns: repeat(5, 40px); grid-template-rows: repeat(5, 40px); gap: 3px; }
@@ -46,10 +43,22 @@
     .cell.cat-dead { background: #da3633; }
     .cell.guess-live { background: #1f6feb; }
     .cell.guess-dead { background: #8957e5; }
+    .cell.missed { background: #30363d; color: #f85149; font-weight: bold; }
+    .cell.hit { background: #238636; color: #7ee787; font-weight: bold; }
     .controls { margin-top: 20px; display: flex; justify-content: center; gap: 15px; }
     button { background: #238636; color: white; border: none; padding: 10px 20px; font-size: 1rem; border-radius: 6px; cursor: pointer; }
     button:hover { background: #2ea043; }
     button:disabled { background: #30363d; cursor: not-allowed; }
+
+    /* Modal / Pop-up Quântico */
+    .modal-overlay {
+      position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+      background: rgba(0,0,0,0.8); display: none; align-items: center; justify-content: center; z-index: 100;
+    }
+    .modal-content {
+      background: #161b22; border: 2px solid #8957e5; padding: 25px; border-radius: 12px; max-width: 400px; text-align: center;
+    }
+    .modal-content h2 { margin-top: 0; color: #58a6ff; }
   </style>
 </head>
 <body>
@@ -85,7 +94,6 @@
         <div class="board-title" style="color: #f85149;">Seu Gato Morto (|Φ⟩)</div>
         <div id="grid-dead" class="grid"></div>
       </div>
-      <!-- Tabuleiros de ataque inicialmente bloqueados até o posicionamento e jogada -->
       <div id="box-enemy-live" class="board-box enemy">
         <div class="board-title" style="color: #d29922;">Alvo: Vivo Inimigo</div>
         <div id="grid-enemy-live" class="grid"></div>
@@ -102,6 +110,15 @@
     </div>
   </div>
 
+  <!-- Pop-up Quântico -->
+  <div id="popup-modal" class="modal-overlay">
+    <div class="modal-content">
+      <h2 id="modal-title">Resultado da Medição</h2>
+      <p id="modal-body"></p>
+      <button onclick="closeModal()">Continuar</button>
+    </div>
+  </div>
+
   <script>
     const socket = io();
     const BOARD_SIZE = 5;
@@ -113,18 +130,23 @@
 
     let myLiveCat = null;
     let myDeadCat = null;
+
     let guessLiveTarget = null;
     let guessDeadTarget = null;
 
+    // Matrizes para guardar o histórico de erros e acertos nos tabuleiros inimigos
+    let enemyLiveHistory = Array(25).fill(null); // 'MISS' ou 'HIT'
+    let enemyDeadHistory = Array(25).fill(null);
+
     function createRoom() {
       const code = document.getElementById('room-code-input').value.trim();
-      if (!code) { alert('Digite o código!'); return; }
+      if (!code) return alert('Digite o código!');
       socket.emit('createRoom', code);
     }
 
     function joinRoom() {
       const code = document.getElementById('room-code-input').value.trim();
-      if (!code) { alert('Digite o código!'); return; }
+      if (!code) return alert('Digite o código!');
       socket.emit('joinRoom', code);
     }
 
@@ -133,7 +155,7 @@
       myPlayerNumber = d.playerNumber;
       document.getElementById('lobby').style.display = 'none';
       document.getElementById('game-area').style.display = 'block';
-      setStatus(`Sala conectada! Jogador ${myPlayerNumber}. Posicione seus gatos.`);
+      setStatus(`Sala conectada! Jogador ${myPlayerNumber}. Posicione seus dois gatos.`);
       buildAllGrids();
     });
 
@@ -174,11 +196,10 @@
           renderMyBoards();
           socket.emit('makeMove', { newLive: myLiveCat, newDead: myDeadCat });
           
-          // Libera tabuleiros inimigos para ataque após o movimento
           document.getElementById('box-enemy-live').classList.add('active');
           document.getElementById('box-enemy-dead').classList.add('active');
           
-          setStatus('Movimento realizado! Selecione os alvos no tabuleiro inimigo e clique em Disparar Medição.');
+          setStatus('Movimento realizado! Escolha os alvos nos tabuleiros inimigos e clique em Disparar.');
           document.getElementById('btn-shoot').style.display = 'inline-block';
           document.getElementById('btn-shoot').disabled = false;
           document.getElementById('quantum-panel').style.display = 'none';
@@ -194,7 +215,7 @@
       if (gameStage !== 'PLAYING' || !isMyTurn) return;
       if (type === 'live') guessLiveTarget = { x, y };
       if (type === 'dead') guessDeadTarget = { x, y };
-      renderEnemyGuesses();
+      renderEnemyGridState();
     }
 
     function rollDice() {
@@ -206,7 +227,7 @@
       hasRolledDice = true;
       document.getElementById('card-display').style.display = 'block';
       document.getElementById('card-content').innerHTML = `<strong>🎲 Dado: ${data.diceRoll}</strong><br><strong>Carta: ${data.card.name}</strong><br>${data.card.desc}`;
-      setStatus(`Carta ativa! Mova seu gato no tabuleiro.`);
+      setStatus(`Carta ativada! Mova seu gato no tabuleiro.`);
     });
 
     function renderMyBoards() {
@@ -220,35 +241,46 @@
       if (myDeadCat) { gd.children[myDeadCat.y * BOARD_SIZE + myDeadCat.x].className = 'cell cat-dead'; gd.children[myDeadCat.y * BOARD_SIZE + myDeadCat.x].innerHTML = '💀'; }
     }
 
-    function renderEnemyGuesses() {
+    function renderEnemyGridState() {
       const gel = document.getElementById('grid-enemy-live');
       const ged = document.getElementById('grid-enemy-dead');
+
       for(let i=0; i<25; i++) {
-        gel.children[i].className = 'cell'; gel.children[i].innerHTML = '';
-        ged.children[i].className = 'cell'; ged.children[i].innerHTML = '';
+        // Restaura histórico
+        gel.children[i].className = 'cell' + (enemyLiveHistory[i] === 'MISS' ? ' missed' : enemyLiveHistory[i] === 'HIT' ? ' hit' : '');
+        gel.children[i].innerHTML = enemyLiveHistory[i] === 'MISS' ? '❌' : enemyLiveHistory[i] === 'HIT' ? '🎯' : '';
+
+        ged.children[i].className = 'cell' + (enemyDeadHistory[i] === 'MISS' ? ' missed' : enemyDeadHistory[i] === 'HIT' ? ' hit' : '');
+        ged.children[i].innerHTML = enemyDeadHistory[i] === 'MISS' ? '❌' : enemyDeadHistory[i] === 'HIT' ? '🎯' : '';
       }
-      if (guessLiveTarget) { gel.children[guessLiveTarget.y * BOARD_SIZE + guessLiveTarget.x].className = 'cell guess-live'; gel.children[guessLiveTarget.y * BOARD_SIZE + guessLiveTarget.x].innerHTML = '🎯'; }
-      if (guessDeadTarget) { ged.children[guessDeadTarget.y * BOARD_SIZE + guessDeadTarget.x].className = 'cell guess-dead'; ged.children[guessDeadTarget.y * BOARD_SIZE + guessDeadTarget.x].innerHTML = '🎯'; }
+
+      // Mostra seleção atual
+      if (guessLiveTarget) {
+        const idx = guessLiveTarget.y * BOARD_SIZE + guessLiveTarget.x;
+        gel.children[idx].classList.add('guess-live');
+        gel.children[idx].innerHTML = '🎯';
+      }
+      if (guessDeadTarget) {
+        const idx = guessDeadTarget.y * BOARD_SIZE + guessDeadTarget.x;
+        ged.children[idx].classList.add('guess-dead');
+        ged.children[idx].innerHTML = '🎯';
+      }
     }
 
     function confirmSetup() {
-      if (!myLiveCat || !myDeadCat) { alert('Posicione o Gato Vivo e o Gato Morto!'); return; }
+      if (!myLiveCat || !myDeadCat) return alert('Posicione o Gato Vivo e o Gato Morto!');
       socket.emit('setInitialPositions', { live: myLiveCat, dead: myDeadCat });
       document.getElementById('btn-confirm').disabled = true;
-      setStatus('Posições confirmadas. Aguardando o oponente posicionar...');
+      setStatus('Posições confirmadas. Aguardando o oponente...');
     }
 
     function submitObservation() {
-      if (!guessLiveTarget || !guessDeadTarget) { alert('Selecione os alvos nos tabuleiros inimigos!'); return; }
+      if (!guessLiveTarget || !guessDeadTarget) return alert('Selecione alvos nos dois tabuleiros inimigos!');
       socket.emit('observe', { targetLive: guessLiveTarget, targetDead: guessDeadTarget });
-      document.getElementById('btn-shoot').style.display = 'none';
       
-      // Bloqueia novamente os tabuleiros inimigos após o tiro
+      document.getElementById('btn-shoot').style.display = 'none';
       document.getElementById('box-enemy-live').classList.remove('active');
       document.getElementById('box-enemy-dead').classList.remove('active');
-      
-      guessLiveTarget = null; guessDeadTarget = null;
-      renderEnemyGuesses();
     }
 
     function setStatus(msg) { document.getElementById('status-bar').innerText = msg; }
@@ -257,42 +289,71 @@
     socket.on('gameStart', (d) => {
       gameStage = 'PLAYING';
       document.getElementById('btn-confirm').style.display = 'none';
-      isMyTurn = (d.activeTurn === socket.id);
-      hasRolledDice = false;
-      if (isMyTurn) {
-        setStatus('Partida Iniciada! Seu turno: Role o Dado Quântico.');
-        document.getElementById('quantum-panel').style.display = 'block';
-        document.getElementById('btn-dice').disabled = false;
-        document.getElementById('card-display').style.display = 'none';
-      } else {
-        setStatus("Partida Iniciada! Vez do oponente...");
-        document.getElementById('quantum-panel').style.display = 'none';
-      }
+      updateTurnState(d.activeTurn);
     });
 
-    socket.on('updateBoard', (d) => {
-      isMyTurn = (d.nextTurn === socket.id);
+    socket.on('turnChanged', (d) => {
+      updateTurnState(d.nextTurn);
+    });
+
+    function updateTurnState(activeTurnId) {
+      isMyTurn = (activeTurnId === socket.id);
       hasRolledDice = false;
+      guessLiveTarget = null;
+      guessDeadTarget = null;
+      renderEnemyGridState();
+
       if (isMyTurn) {
-        setStatus('Sua vez! Role o Dado Quântico.');
+        setStatus('Seu turno! Role o Dado Quântico.');
         document.getElementById('quantum-panel').style.display = 'block';
         document.getElementById('btn-dice').disabled = false;
         document.getElementById('card-display').style.display = 'none';
       } else {
-        setStatus('O oponente jogou. Aguardando...');
+        setStatus("Vez do oponente jogar...");
         document.getElementById('quantum-panel').style.display = 'none';
+        document.getElementById('box-enemy-live').classList.remove('active');
+        document.getElementById('box-enemy-dead').classList.remove('active');
       }
-    });
+    }
 
     socket.on('observeResult', (d) => {
-      alert(`Resultado da Medição:\nVivo atingido? ${d.hitLive ? 'SIM 🎯' : 'NÃO ❌'}\nMorto atingido? ${d.hitDead ? 'SIM 🎯' : 'NÃO ❌'}`);
+      const idxLive = d.targetLive.y * BOARD_SIZE + d.targetLive.x;
+      const idxDead = d.targetDead.y * BOARD_SIZE + d.targetDead.x;
+
+      // Salva marcas no histórico
+      enemyLiveHistory[idxLive] = d.hitLive ? 'HIT' : 'MISS';
+      enemyDeadHistory[idxDead] = d.hitDead ? 'HIT' : 'MISS';
+      renderEnemyGridState();
+
+      // Exibe Pop-up Quântico
+      showModal(
+        '⚛️ Resultado da Medição Quântica',
+        `A medição colapsou no estado do vácuo!<br><br>
+        • Gato Vivo: ${d.hitLive ? '🎯 ATINGIDO!' : '❌ Ausente (Vazio)'}<br>
+        • Gato Morto: ${d.hitDead ? '🎯 ATINGIDO!' : '❌ Ausente (Vazio)'}`
+      );
     });
 
     socket.on('gameOver', (d) => {
-      if (d.winner === myPlayerNumber) alert('🎉 VITÓRIA! Você encontrou os gatos do oponente.');
-      else alert('💀 DERROTA! O oponente colapsou seus gatos.');
+      if (d.winner === myPlayerNumber) {
+        showModal('🎉 COLAPSO DA EQUAÇÃO!', 'Parabéns! Você colapsou a função de onda com sucesso e determinou o estado exato dos dois gatos do oponente!');
+        setStatus('Você Venceu!');
+      } else {
+        showModal('💀 COLAPSO DA EQUAÇÃO!', 'O oponente colapsou a sua função de onda primeiro e encontrou seus dois gatos!');
+        setStatus('Você Perdeu!');
+      }
       gameStage = 'ENDED';
     });
+
+    function showModal(title, text) {
+      document.getElementById('modal-title').innerHTML = title;
+      document.getElementById('modal-body').innerHTML = text;
+      document.getElementById('popup-modal').style.display = 'flex';
+    }
+
+    function closeModal() {
+      document.getElementById('popup-modal').style.display = 'none';
+    }
 
     socket.on('playerLeft', (m) => { alert(m); location.reload(); });
   </script>
