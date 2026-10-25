@@ -6,7 +6,6 @@
   <title>Gatos e Gatos: Vivo ou Morto, És a Questão!</title>
   <script src="/socket.io/socket.io.js"></script>
   <style>
-    /* Reset e Configuração do Canvas de Fundo */
     * { box-sizing: border-box; }
     body {
       font-family: 'Courier New', Courier, monospace;
@@ -66,7 +65,6 @@
       backdrop-filter: blur(8px);
     }
 
-    /* Terminal Fosforescente */
     #log-box {
       background: rgba(0, 0, 0, 0.9);
       border: 1px solid #22c55e;
@@ -164,7 +162,6 @@
 </head>
 <body>
 
-  <!-- Canvas da Animação Quântica de Fundo -->
   <canvas id="bg-canvas"></canvas>
 
   <h1>⚡ QUANTUM_CAT_LAB // v3.0 ⚡</h1>
@@ -227,7 +224,6 @@
   </div>
 
   <script>
-    /* Script da Animação Quântica em Canvas de Fundo */
     const canvas = document.getElementById('bg-canvas');
     const ctx = canvas.getContext('2d');
 
@@ -247,4 +243,362 @@
       ctx.fillStyle = 'rgba(3, 7, 18, 0.15)';
       ctx.fillRect(0, 0, canvas.width, canvas.height);
 
-      ctx.fillStyle = '#
+      ctx.fillStyle = '#22c55e';
+      ctx.font = `${fontSize}px monospace`;
+
+      for (let i = 0; i < drops.length; i++) {
+        const text = chars.charAt(Math.floor(Math.random() * chars.length));
+        ctx.fillStyle = Math.random() > 0.85 ? '#38bdf8' : '#22c55e';
+        ctx.fillText(text, i * fontSize, drops[i] * fontSize);
+
+        if (drops[i] * fontSize > canvas.height && Math.random() > 0.975) {
+          drops[i] = 0;
+        }
+        drops[i]++;
+      }
+    }
+    setInterval(drawMatrix, 40);
+
+    const socket = io();
+    const BOARD_SIZE = 5;
+
+    let myPlayerNumber = null;
+    let isMyTurn = false;
+    let gameStage = 'SETUP';
+    let hasRolledDice = false;
+    let currentCardId = null;
+
+    let myLiveCat = null;
+    let myDeadCat = null;
+
+    let guessLiveTarget = null;
+    let guessDeadTarget = null;
+
+    let enemyLiveHistory = Array(25).fill(null);
+    let enemyDeadHistory = Array(25).fill(null);
+
+    function addLog(message) {
+      const logBox = document.getElementById('log-box');
+      const timestamp = new Date().toLocaleTimeString();
+      logBox.innerHTML += `<div>[${timestamp}] ${message}</div>`;
+      logBox.scrollTop = logBox.scrollHeight;
+    }
+
+    function playSound(type) {
+      try {
+        let audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+        let oscillator = audioCtx.createOscillator();
+        let gainNode = audioCtx.createGain();
+        oscillator.connect(gainNode);
+        gainNode.connect(audioCtx.destination);
+
+        if (type === 'dice') {
+          oscillator.type = 'sine';
+          oscillator.frequency.setValueAtTime(440, audioCtx.currentTime);
+          gainNode.gain.setValueAtTime(0.05, audioCtx.currentTime);
+          oscillator.start();
+          oscillator.stop(audioCtx.currentTime + 0.1);
+        } else if (type === 'hit') {
+          oscillator.type = 'triangle';
+          oscillator.frequency.setValueAtTime(150, audioCtx.currentTime);
+          gainNode.gain.setValueAtTime(0.1, audioCtx.currentTime);
+          oscillator.start();
+          oscillator.stop(audioCtx.currentTime + 0.2);
+        } else if (type === 'miss') {
+          oscillator.type = 'sawtooth';
+          oscillator.frequency.setValueAtTime(200, audioCtx.currentTime);
+          gainNode.gain.setValueAtTime(0.05, audioCtx.currentTime);
+          oscillator.start();
+          oscillator.stop(audioCtx.currentTime + 0.15);
+        }
+      } catch (e) {}
+    }
+
+    function createRoom() {
+      const code = document.getElementById('room-code-input').value.trim();
+      if (!code) return alert('Digite o código da sala!');
+      socket.emit('createRoom', code);
+    }
+
+    function joinRoom() {
+      const code = document.getElementById('room-code-input').value.trim();
+      if (!code) return alert('Digite o código da sala!');
+      socket.emit('joinRoom', code);
+    }
+
+    socket.on('errorMsg', (m) => alert(m));
+    socket.on('init', (d) => {
+      myPlayerNumber = d.playerNumber;
+      document.getElementById('lobby').style.display = 'none';
+      document.getElementById('game-area').style.display = 'block';
+      setStatus(`TERMINAL CONECTADO - JOGADOR ${myPlayerNumber}. Posicione suas unidades.`);
+      addLog(`Acesso autorizado como Jogador ${myPlayerNumber}.`);
+      buildAllGrids();
+    });
+
+    function buildAllGrids() {
+      buildGrid('grid-live', (x, y) => handleMyGridClick('live', x, y));
+      buildGrid('grid-dead', (x, y) => handleMyGridClick('dead', x, y));
+      buildGrid('grid-enemy-live', (x, y) => handleEnemyGridClick('live', x, y));
+      buildGrid('grid-enemy-dead', (x, y) => handleEnemyGridClick('dead', x, y));
+    }
+
+    function buildGrid(id, cb) {
+      const g = document.getElementById(id);
+      g.innerHTML = '';
+      for (let r = 0; r < BOARD_SIZE; r++) {
+        for (let c = 0; c < BOARD_SIZE; c++) {
+          const cell = document.createElement('div');
+          cell.className = 'cell';
+          cell.onclick = () => cb(c, r);
+          g.appendChild(cell);
+        }
+      }
+    }
+
+    function handleMyGridClick(type, x, y) {
+      if (gameStage === 'SETUP') {
+        if (type === 'live') myLiveCat = { x, y };
+        if (type === 'dead') myDeadCat = { x, y };
+        renderMyBoards();
+      } else if (gameStage === 'PLAYING' && isMyTurn && hasRolledDice) {
+        
+        if (currentCardId === 4) {
+          if (type === 'live') myLiveCat = { x, y };
+          if (type === 'dead') myDeadCat = { x, y };
+          finishTurnAfterMove(`Superposição ativada! Gato ${type} reposicionado para (${x},${y}).`);
+          return;
+        }
+
+        if (currentCardId === 1 && type === 'live') {
+          const dx = x - myLiveCat.x;
+          const dy = y - myLiveCat.y;
+          const newDeadX = myDeadCat.x - dx;
+          const newDeadY = myDeadCat.y - dy;
+
+          if (newDeadX >= 0 && newDeadX < BOARD_SIZE && newDeadY >= 0 && newDeadY < BOARD_SIZE) {
+            myLiveCat = { x, y };
+            myDeadCat = { x: newDeadX, y: newDeadY };
+            finishTurnAfterMove(`Efeito Túnel ativado! Salto para (${x},${y}).`);
+          } else {
+            alert('Túnel inválido! Unidade excederia os limites do sistema.');
+          }
+          return;
+        }
+
+        if (type === 'live') {
+          const dx = x - myLiveCat.x;
+          const dy = y - myLiveCat.y;
+          const newDeadX = myDeadCat.x - dx;
+          const newDeadY = myDeadCat.y - dy;
+
+          if (newDeadX >= 0 && newDeadX < BOARD_SIZE && newDeadY >= 0 && newDeadY < BOARD_SIZE) {
+            myLiveCat = { x, y };
+            myDeadCat = { x: newDeadX, y: newDeadY };
+            finishTurnAfterMove(`Movimento espelho executado. Vivo em (${x},${y}).`);
+          } else {
+            alert('Coordenadas de espelho inválidas fora da matriz!');
+          }
+        } else {
+          alert('No modo padrão, selecione o setor do Gato Vivo para calcular o espelho!');
+        }
+
+      } else if (isMyTurn && !hasRolledDice) {
+        alert('Execute o Dado Quântico primeiro!');
+      }
+    }
+
+    function finishTurnAfterMove(logMsg) {
+      renderMyBoards();
+      socket.emit('makeMove', { newLive: myLiveCat, newDead: myDeadCat });
+      addLog(logMsg);
+      
+      document.getElementById('box-enemy-live').classList.add('active');
+      document.getElementById('box-enemy-dead').classList.add('active');
+      
+      setStatus('Movimento computado! Selecione os alvos no setor inimigo.');
+      document.getElementById('btn-shoot').style.display = 'inline-block';
+      document.getElementById('btn-shoot').disabled = false;
+      document.getElementById('quantum-panel').style.display = 'none';
+    }
+
+    function handleEnemyGridClick(type, x, y) {
+      if (gameStage !== 'PLAYING' || !isMyTurn) return;
+      const idx = y * BOARD_SIZE + x;
+      const historyArr = type === 'live' ? enemyLiveHistory : enemyDeadHistory;
+
+      if (historyArr[idx] === 'MISS') {
+        alert('Esta coordenada está BLOQUEADA por interferência (❌) do turno anterior!');
+        return;
+      }
+
+      if (type === 'live') guessLiveTarget = { x, y };
+      if (type === 'dead') guessDeadTarget = { x, y };
+      renderEnemyGridState();
+    }
+
+    function rollDice() {
+      socket.emit('rollQuantumDice');
+      document.getElementById('btn-dice').disabled = true;
+    }
+
+    socket.on('diceResult', (data) => {
+      hasRolledDice = true;
+      currentCardId = data.card.id;
+      playSound('dice');
+      addLog(`Dado Quântico: 🎲 ${data.diceRoll} | Protocolo: ${data.card.name}`);
+      
+      document.getElementById('card-display').style.display = 'block';
+      document.getElementById('card-content').innerHTML = `<strong>🎲 Dado: ${data.diceRoll}</strong><br><strong>Protocolo: ${data.card.name}</strong><br>${data.card.desc}`;
+      setStatus(`Protocolo ativo! Efetue o movimento na matriz.`);
+    });
+
+    function renderMyBoards() {
+      const gl = document.getElementById('grid-live');
+      const gd = document.getElementById('grid-dead');
+      for(let i=0; i<25; i++) {
+        gl.children[i].className = 'cell'; gl.children[i].innerHTML = '';
+        gd.children[i].className = 'cell'; gd.children[i].innerHTML = '';
+      }
+      if (myLiveCat) { gl.children[myLiveCat.y * BOARD_SIZE + myLiveCat.x].className = 'cell cat-live'; gl.children[myLiveCat.y * BOARD_SIZE + myLiveCat.x].innerHTML = '🐱'; }
+      if (myDeadCat) { gd.children[myDeadCat.y * BOARD_SIZE + myDeadCat.x].className = 'cell cat-dead'; gd.children[myDeadCat.y * BOARD_SIZE + myDeadCat.x].innerHTML = '💀'; }
+    }
+
+    function renderEnemyGridState() {
+      const gel = document.getElementById('grid-enemy-live');
+      const ged = document.getElementById('grid-enemy-dead');
+
+      for(let i=0; i<25; i++) {
+        const liveStatus = enemyLiveHistory[i];
+        const deadStatus = enemyDeadHistory[i];
+
+        gel.children[i].className = 'cell' + (liveStatus === 'MISS' ? ' missed blocked' : liveStatus === 'HIT' ? ' hit' : '');
+        gel.children[i].innerHTML = liveStatus === 'MISS' ? '❌' : liveStatus === 'HIT' ? '🎯' : '';
+
+        ged.children[i].className = 'cell' + (deadStatus === 'MISS' ? ' missed blocked' : deadStatus === 'HIT' ? ' hit' : '');
+        ged.children[i].innerHTML = deadStatus === 'MISS' ? '❌' : deadStatus === 'HIT' ? '🎯' : '';
+      }
+
+      if (guessLiveTarget) {
+        const idx = guessLiveTarget.y * BOARD_SIZE + guessLiveTarget.x;
+        gel.children[idx].classList.add('guess-live');
+        gel.children[idx].innerHTML = '🎯';
+      }
+      if (guessDeadTarget) {
+        const idx = guessDeadTarget.y * BOARD_SIZE + guessDeadTarget.x;
+        ged.children[idx].classList.add('guess-dead');
+        ged.children[idx].innerHTML = '🎯';
+      }
+    }
+
+    function confirmSetup() {
+      if (!myLiveCat || !myDeadCat) return alert('Posicione o Gato Vivo e o Gato Morto na matriz!');
+      socket.emit('setInitialPositions', { live: myLiveCat, dead: myDeadCat });
+      document.getElementById('btn-confirm').disabled = true;
+      setStatus('Configuração salva. Sincronizando com o oponente...');
+      addLog('Posições iniciais bloqueadas no sistema.');
+    }
+
+    function submitObservation() {
+      if (!guessLiveTarget || !guessDeadTarget) return alert('Selecione alvos em ambos os setores inimigos!');
+      socket.emit('observe', { targetLive: guessLiveTarget, targetDead: guessDeadTarget });
+      addLog('Varredura de medição quântica disparada.');
+      
+      document.getElementById('btn-shoot').style.display = 'none';
+      document.getElementById('box-enemy-live').classList.remove('active');
+      document.getElementById('box-enemy-dead').classList.remove('active');
+    }
+
+    function setStatus(msg) { document.getElementById('status-bar').innerText = msg; }
+    socket.on('status', (m) => setStatus(m));
+
+    socket.on('gameStart', (d) => {
+      gameStage = 'PLAYING';
+      document.getElementById('btn-confirm').style.display = 'none';
+      addLog('Simulação iniciada! Função de onda ativada.');
+      updateTurnState(d.activeTurn);
+    });
+
+    socket.on('turnChanged', (d) => {
+      updateTurnState(d.nextTurn);
+    });
+
+    function updateTurnState(activeTurnId) {
+      isMyTurn = (activeTurnId === socket.id);
+      hasRolledDice = false;
+      currentCardId = null;
+      guessLiveTarget = null;
+      guessDeadTarget = null;
+      renderEnemyGridState();
+
+      if (isMyTurn) {
+        setStatus('Seu turno! Execute o Dado Quântico.');
+        addLog('Início do seu ciclo de processamento.');
+        document.getElementById('quantum-panel').style.display = 'block';
+        document.getElementById('btn-dice').disabled = false;
+        document.getElementById('card-display').style.display = 'none';
+      } else {
+        setStatus("Processando turno do oponente...");
+        document.getElementById('quantum-panel').style.display = 'none';
+        document.getElementById('box-enemy-live').classList.remove('active');
+        document.getElementById('box-enemy-dead').classList.remove('active');
+      }
+    }
+
+    socket.on('observeResult', (d) => {
+      const idxLive = d.targetLive.y * BOARD_SIZE + d.targetLive.x;
+      const idxDead = d.targetDead.y * BOARD_SIZE + d.targetDead.x;
+
+      enemyLiveHistory[idxLive] = d.hitLive ? 'HIT' : 'MISS';
+      enemyDeadHistory[idxDead] = d.hitDead ? 'HIT' : 'MISS';
+      renderEnemyGridState();
+
+      if (d.hitLive || d.hitDead) {
+        playSound('hit');
+      } else {
+        playSound('miss');
+      }
+
+      addLog(`Pontuação atual: ${d.score}/3 pts | Vivo (${d.hitLive ? '🎯 ALVO' : '❌ VAZIO'}) | Morto (${d.hitDead ? '🎯 ALVO' : '❌ VAZIO'})`);
+
+      showModal(
+        '⚛️ RELATÓRIO DE VARREDURA',
+        `Medição executada. Pontuação atual: <strong>${d.score} / 3 pts</strong><br><br>
+        • Gato Vivo: ${d.hitLive ? '🎯 IMPACTO NO ALVO! (+1 pt)' : '❌ Vazio (Bloqueado)'}<br>
+        • Gato Morto: ${d.hitDead ? '🎯 IMPACTO NO ALVO! (+1 pt)' : '❌ Vazio (Bloqueado)'}`
+      );
+    });
+
+    socket.on('decoherenceHit', (msg) => {
+      playSound('miss');
+      addLog('Decoerência Térmica: Ciclo de medição interceptado.');
+      showModal('⚠️ DECOERÊNCIA TÉRMICA', msg);
+    });
+
+    socket.on('gameOver', (d) => {
+      if (d.winner === myPlayerNumber) {
+        showModal('🎉 COLAPSO DA EQUAÇÃO!', `Vitória! Condição de vitória atingida (${d.type === 'BOTH' ? 'Colapso total de ambos os gatos' : 'Pontuação máxima de 3 pontos alcançada'}).`);
+        setStatus('SISTEMA VITORIOSO');
+        addLog('Fim de simulação: Vitória total.');
+      } else {
+        showModal('💀 COLAPSO DA EQUAÇÃO!', 'O oponente atingiu a condição de vitória primeiro.');
+        setStatus('SISTEMA DERROTADO');
+        addLog('Fim de simulação: Derrota.');
+      }
+      gameStage = 'ENDED';
+    });
+
+    function showModal(title, text) {
+      document.getElementById('modal-title').innerHTML = title;
+      document.getElementById('modal-body').innerHTML = text;
+      document.getElementById('popup-modal').style.display = 'flex';
+    }
+
+    function closeModal() {
+      document.getElementById('popup-modal').style.display = 'none';
+    }
+
+    socket.on('playerLeft', (m) => { alert(m); location.reload(); });
+  </script>
+</body>
+</html>
