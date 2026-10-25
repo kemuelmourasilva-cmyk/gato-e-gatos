@@ -92,7 +92,7 @@ io.on('connection', (socket) => {
     const opponentId = Object.keys(room.players).find(id => id !== socket.id);
     const opponentPos = room.gameState.positions[opponentId];
 
-    // Se a carta ativa for a 6 (Decoerência), o tiro é anulado por interferência térmica
+    // Verifica se a carta ativa é a 6 (Decoerência)
     if (room.gameState.activeCard && room.gameState.activeCard.id === 6) {
       socket.emit('decoherenceHit', 'Decoerência Térmica! A sua medição sofreu interferência e foi anulada neste turno.');
       room.gameState.turn = opponentId;
@@ -104,9 +104,11 @@ io.on('connection', (socket) => {
     const hitLive = (data.targetLive.x === opponentPos.live.x && data.targetLive.y === opponentPos.live.y);
     const hitDead = (data.targetDead.x === opponentPos.dead.x && data.targetDead.y === opponentPos.dead.y);
 
+    // Vitória total apenas se encontrar ambos os gatos
     if (hitLive && hitDead) {
       io.to(socket.roomCode).emit('gameOver', { winner: room.players[socket.id].number, type: 'BOTH' });
     } else {
+      // Caso contrário, informa o resultado e o jogo CONTINUA normalmente
       socket.emit('observeResult', { hitLive, hitDead, targetLive: data.targetLive, targetDead: data.targetDead });
       
       room.gameState.turn = opponentId;
