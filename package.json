@@ -1,0 +1,13 @@
+{
+  "name": "gatos-e-gatos-quantico",
+  "version": "1.0.0",
+  "description": "Jogo de tabuleiro estratégico quântico multiplayer",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js"
+  },
+  "dependencies": {
+    "express": "^4.18.2",
+    "socket.io": "^4.6.1"
+  }
+}
