@@ -94,13 +94,13 @@ io.on('connection', (socket) => {
     const hitLive = (data.targetLive.x === opponentPos.live.x && data.targetLive.y === opponentPos.live.y);
     const hitDead = (data.targetDead.x === opponentPos.dead.x && data.targetDead.y === opponentPos.dead.y);
 
-    // Se encontrou AMBOS os gatos, o jogo acaba com vitória total
     if (hitLive && hitDead) {
       io.to(socket.roomCode).emit('gameOver', { winner: room.players[socket.id].number, type: 'BOTH' });
     } else {
-      // Caso contrário, informa o resultado da medição e o jogo CONTINUA normalmente
+      // Envia o resultado para quem jogou
       socket.emit('observeResult', { hitLive, hitDead, targetLive: data.targetLive, targetDead: data.targetDead });
       
+      // ALTERAÇÃO CRUCIAL: Passa o turno de forma garantida para o oponente e avisa a sala inteira
       room.gameState.turn = opponentId;
       io.to(socket.roomCode).emit('turnChanged', { nextTurn: room.gameState.turn });
     }
