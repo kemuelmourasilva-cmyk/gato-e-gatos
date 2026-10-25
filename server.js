@@ -73,7 +73,7 @@ io.on('connection', (socket) => {
     const drawnCard = quantumCards[diceRoll - 1];
 
     socket.emit('diceResult', { diceRoll, card: drawnCard });
-    io.to(socket.roomCode).emit('status', `Jogador ${room.players[socket.id].number} rolou o dado quântico (🎲 ${diceRoll}) -> [${drawnCard.name}]`);
+    io.to(socket.roomCode).emit('status', `Jogador ${room.players[socket.id].number} rolou o dado (🎲 ${diceRoll}) -> [${drawnCard.name}]`);
   });
 
   socket.on('makeMove', (data) => {
@@ -94,12 +94,13 @@ io.on('connection', (socket) => {
     const hitLive = (data.targetLive.x === opponentPos.live.x && data.targetLive.y === opponentPos.live.y);
     const hitDead = (data.targetDead.x === opponentPos.dead.x && data.targetDead.y === opponentPos.dead.y);
 
+    // Se encontrou AMBOS os gatos, o jogo acaba com vitória total
     if (hitLive && hitDead) {
-      io.to(socket.roomCode).emit('gameOver', { winner: room.players[socket.id].number });
+      io.to(socket.roomCode).emit('gameOver', { winner: room.players[socket.id].number, type: 'BOTH' });
     } else {
+      // Caso contrário, informa o resultado da medição e o jogo CONTINUA normalmente
       socket.emit('observeResult', { hitLive, hitDead, targetLive: data.targetLive, targetDead: data.targetDead });
       
-      // Passa o turno para o oponente
       room.gameState.turn = opponentId;
       io.to(socket.roomCode).emit('turnChanged', { nextTurn: room.gameState.turn });
     }
