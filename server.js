@@ -23,10 +23,15 @@ const quantumCards = [
 
 io.on('connection', (socket) => {
   socket.on('createRoom', (roomCode) => {
-    if (!roomCode) return socket.emit('errorMsg', 'Código de sala inválido.');
-    if (rooms[roomCode]) return socket.emit('errorMsg', 'Esta sala já existe.');
-    
-    rooms[roomCode] = { 
+    if (!roomCode || typeof roomCode !== 'string') {
+      return socket.emit('errorMsg', 'Código de sala inválido.');
+    }
+    const cleanCode = roomCode.trim();
+    if (rooms[cleanCode]) {
+      return socket.emit('errorMsg', 'Esta sala já existe.');
+    }
+
+    rooms[cleanCode] = { 
       players: {}, 
       gameState: { 
         boardSize: 5, 
@@ -37,14 +42,21 @@ io.on('connection', (socket) => {
         activeCard: null 
       } 
     };
-    joinRoom(socket, roomCode);
+    joinRoom(socket, cleanCode);
   });
 
   socket.on('joinRoom', (roomCode) => {
-    if (!roomCode) return socket.emit('errorMsg', 'Código de sala inválido.');
-    if (!rooms[roomCode]) return socket.emit('errorMsg', 'Sala não encontrada.');
-    if (Object.keys(rooms[roomCode].players).length >= 2) return socket.emit('errorMsg', 'Sala cheia.');
-    joinRoom(socket, roomCode);
+    if (!roomCode || typeof roomCode !== 'string') {
+      return socket.emit('errorMsg', 'Código de sala inválido.');
+    }
+    const cleanCode = roomCode.trim();
+    if (!rooms[cleanCode]) {
+      return socket.emit('errorMsg', 'Sala não encontrada.');
+    }
+    if (Object.keys(rooms[cleanCode].players).length >= 2) {
+      return socket.emit('errorMsg', 'Sala cheia.');
+    }
+    joinRoom(socket, cleanCode);
   });
 
   function joinRoom(socket, roomCode) {
@@ -52,6 +64,7 @@ io.on('connection', (socket) => {
     socket.join(roomCode);
     const room = rooms[roomCode];
     const playerNumber = Object.keys(room.players).length === 0 ? 1 : 2;
+    
     room.players[socket.id] = { id: socket.id, number: playerNumber, ready: false };
     room.gameState.scores[socket.id] = 0;
     room.gameState.blockedCells[socket.id] = [];
@@ -67,7 +80,8 @@ io.on('connection', (socket) => {
 
   socket.on('setInitialPositions', (data) => {
     const room = rooms[socket.roomCode];
-    if (!room) return;
+    if (!room || !room.players[socket.id]) return;
+    
     room.gameState.positions[socket.id] = { live: data.live, dead: data.dead };
     room.players[socket.id].ready = true;
 
@@ -106,6 +120,8 @@ io.on('connection', (socket) => {
     if (!room || room.gameState.turn !== socket.id) return;
 
     const opponentId = Object.keys(room.players).find(id => id !== socket.id);
+    if (!opponentId || !room.gameState.positions[opponentId]) return;
+
     const opponentPos = room.gameState.positions[opponentId];
     const blocked = room.gameState.blockedCells[socket.id] || [];
 
