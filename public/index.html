@@ -226,6 +226,7 @@
         renderMyBoards();
       } else if (gameStage === 'PLAYING' && isMyTurn && hasRolledDice) {
         
+        // Carta 4: Superposição
         if (currentCardId === 4) {
           if (type === 'live') myLiveCat = { x, y };
           if (type === 'dead') myDeadCat = { x, y };
@@ -233,6 +234,7 @@
           return;
         }
 
+        // Carta 1: Efeito Túnel
         if (currentCardId === 1 && type === 'live') {
           const dx = x - myLiveCat.x;
           const dy = y - myLiveCat.y;
@@ -249,6 +251,7 @@
           return;
         }
 
+        // Movimento Espelho padrão
         if (type === 'live') {
           const dx = x - myLiveCat.x;
           const dy = y - myLiveCat.y;
@@ -405,7 +408,12 @@
       enemyDeadHistory[idxDead] = d.hitDead ? 'HIT' : 'MISS';
       renderEnemyGridState();
 
-      playSound('miss');
+      if (d.hitLive || d.hitDead) {
+        playSound('hit');
+      } else {
+        playSound('miss');
+      }
+
       addLog(`Medição parcial: Vivo (${d.hitLive ? '🎯 ACERTOU' : '❌ ERROU'}) | Morto (${d.hitDead ? '🎯 ACERTOU' : '❌ ERROU'})`);
 
       showModal(
