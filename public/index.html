@@ -19,11 +19,11 @@
     #game-area { display: none; }
     #status-bar {
       background: #161b22; border: 1px solid #30363d; padding: 12px;
-      border-radius: 8px; display: inline-block; margin-bottom: 15px; font-weight: bold; color: #79c0ff;
+      border-radius: 8px; display: inline-block; margin-bottom: 10px; font-weight: bold; color: #79c0ff;
     }
     .quantum-panel {
       background: #1f242c; border: 2px dashed #8957e5; border-radius: 10px;
-      padding: 15px; max-width: 500px; margin: 0 auto 20px auto; display: none;
+      padding: 15px; max-width: 500px; margin: 0 auto 15px auto; display: none;
     }
     .card-box { background: #161b22; border: 1px solid #8957e5; border-radius: 8px; padding: 10px; margin-top: 10px; color: #d2a8ff; }
     .boards-container { display: flex; justify-content: center; gap: 15px; flex-wrap: wrap; }
@@ -76,6 +76,11 @@
 
   <div id="game-area">
     <div id="status-bar">Aguardando...</div>
+
+    <!-- Histórico / Log de Laboratório Quântico -->
+    <div id="log-box" style="background: #010409; border: 1px solid #30363d; border-radius: 8px; padding: 10px; max-width: 600px; height: 90px; margin: 0 auto 15px auto; overflow-y: auto; text-align: left; font-family: monospace; font-size: 0.85rem; color: #8b949e;">
+      <div>[Sistema] Laboratório Quântico inicializado. Aguardando eventos...</div>
+    </div>
 
     <div id="quantum-panel" class="quantum-panel">
       <h3>⚛️ Turno Probabilístico ⚛️</h3>
@@ -134,9 +139,46 @@
     let guessLiveTarget = null;
     let guessDeadTarget = null;
 
-    // Matrizes para guardar o histórico de erros e acertos nos tabuleiros inimigos
-    let enemyLiveHistory = Array(25).fill(null); // 'MISS' ou 'HIT'
+    let enemyLiveHistory = Array(25).fill(null);
     let enemyDeadHistory = Array(25).fill(null);
+
+    // --- FUNÇÕES DE LOG E SONS ---
+    function addLog(message) {
+      const logBox = document.getElementById('log-box');
+      const timestamp = new Date().toLocaleTimeString();
+      logBox.innerHTML += `<div>[${timestamp}] ${message}</div>`;
+      logBox.scrollTop = logBox.scrollHeight;
+    }
+
+    function playSound(type) {
+      try {
+        let audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+        let oscillator = audioCtx.createOscillator();
+        let gainNode = audioCtx.createGain();
+        oscillator.connect(gainNode);
+        gainNode.connect(audioCtx.destination);
+
+        if (type === 'dice') {
+          oscillator.type = 'sine';
+          oscillator.frequency.setValueAtTime(440, audioCtx.currentTime);
+          gainNode.gain.setValueAtTime(0.05, audioCtx.currentTime);
+          oscillator.start();
+          oscillator.stop(audioCtx.currentTime + 0.1);
+        } else if (type === 'hit') {
+          oscillator.type = 'triangle';
+          oscillator.frequency.setValueAtTime(150, audioCtx.currentTime);
+          gainNode.gain.setValueAtTime(0.1, audioCtx.currentTime);
+          oscillator.start();
+          oscillator.stop(audioCtx.currentTime + 0.2);
+        } else if (type === 'miss') {
+          oscillator.type = 'sawtooth';
+          oscillator.frequency.setValueAtTime(200, audioCtx.currentTime);
+          gainNode.gain.setValueAtTime(0.05, audioCtx.currentTime);
+          oscillator.start();
+          oscillator.stop(audioCtx.currentTime + 0.15);
+        }
+      } catch (e) {}
+    }
 
     function createRoom() {
       const code = document.getElementById('room-code-input').value.trim();
@@ -156,6 +198,7 @@
       document.getElementById('lobby').style.display = 'none';
       document.getElementById('game-area').style.display = 'block';
       setStatus(`Sala conectada! Jogador ${myPlayerNumber}. Posicione seus dois gatos.`);
+      addLog(`Entrou na sala como Jogador ${myPlayerNumber}.`);
       buildAllGrids();
     });
 
@@ -195,11 +238,12 @@
           myDeadCat = { x: newDeadX, y: newDeadY };
           renderMyBoards();
           socket.emit('makeMove', { newLive: myLiveCat, newDead: myDeadCat });
+          addLog(`Movimento espelho executado. Gato Vivo em (${x},${y}).`);
           
           document.getElementById('box-enemy-live').classList.add('active');
           document.getElementById('box-enemy-dead').classList.add('active');
           
-          setStatus('Movimento realizado! Escolha os alvos nos tabuleiros inimigos e clique em Disparar.');
+          setStatus('Movimento realizado! Escolha os alvos no tabuleiro inimigo e clique em Disparar.');
           document.getElementById('btn-shoot').style.display = 'inline-block';
           document.getElementById('btn-shoot').disabled = false;
           document.getElementById('quantum-panel').style.display = 'none';
@@ -225,9 +269,12 @@
 
     socket.on('diceResult', (data) => {
       hasRolledDice = true;
+      playSound('dice');
+      addLog(`Dado Quântico rolado: 🎲 ${data.diceRoll} | Carta: ${data.card.name}`);
+      
       document.getElementById('card-display').style.display = 'block';
       document.getElementById('card-content').innerHTML = `<strong>🎲 Dado: ${data.diceRoll}</strong><br><strong>Carta: ${data.card.name}</strong><br>${data.card.desc}`;
-      setStatus(`Carta ativada! Mova seu gato no tabuleiro.`);
+      setStatus(`Carta ativa! Mova seu gato no tabuleiro.`);
     });
 
     function renderMyBoards() {
@@ -246,7 +293,6 @@
       const ged = document.getElementById('grid-enemy-dead');
 
       for(let i=0; i<25; i++) {
-        // Restaura histórico
         gel.children[i].className = 'cell' + (enemyLiveHistory[i] === 'MISS' ? ' missed' : enemyLiveHistory[i] === 'HIT' ? ' hit' : '');
         gel.children[i].innerHTML = enemyLiveHistory[i] === 'MISS' ? '❌' : enemyLiveHistory[i] === 'HIT' ? '🎯' : '';
 
@@ -254,7 +300,6 @@
         ged.children[i].innerHTML = enemyDeadHistory[i] === 'MISS' ? '❌' : enemyDeadHistory[i] === 'HIT' ? '🎯' : '';
       }
 
-      // Mostra seleção atual
       if (guessLiveTarget) {
         const idx = guessLiveTarget.y * BOARD_SIZE + guessLiveTarget.x;
         gel.children[idx].classList.add('guess-live');
@@ -272,11 +317,13 @@
       socket.emit('setInitialPositions', { live: myLiveCat, dead: myDeadCat });
       document.getElementById('btn-confirm').disabled = true;
       setStatus('Posições confirmadas. Aguardando o oponente...');
+      addLog('Posições iniciais definidas no laboratório.');
     }
 
     function submitObservation() {
       if (!guessLiveTarget || !guessDeadTarget) return alert('Selecione alvos nos dois tabuleiros inimigos!');
       socket.emit('observe', { targetLive: guessLiveTarget, targetDead: guessDeadTarget });
+      addLog('Disparo de medição quântica efetuado.');
       
       document.getElementById('btn-shoot').style.display = 'none';
       document.getElementById('box-enemy-live').classList.remove('active');
@@ -289,6 +336,7 @@
     socket.on('gameStart', (d) => {
       gameStage = 'PLAYING';
       document.getElementById('btn-confirm').style.display = 'none';
+      addLog('Partida iniciada! As funções de onda estão ativas.');
       updateTurnState(d.activeTurn);
     });
 
@@ -305,6 +353,7 @@
 
       if (isMyTurn) {
         setStatus('Seu turno! Role o Dado Quântico.');
+        addLog('Início do seu turno.');
         document.getElementById('quantum-panel').style.display = 'block';
         document.getElementById('btn-dice').disabled = false;
         document.getElementById('card-display').style.display = 'none';
@@ -320,15 +369,21 @@
       const idxLive = d.targetLive.y * BOARD_SIZE + d.targetLive.x;
       const idxDead = d.targetDead.y * BOARD_SIZE + d.targetDead.x;
 
-      // Salva marcas no histórico
       enemyLiveHistory[idxLive] = d.hitLive ? 'HIT' : 'MISS';
       enemyDeadHistory[idxDead] = d.hitDead ? 'HIT' : 'MISS';
       renderEnemyGridState();
 
-      // Exibe Pop-up Quântico
+      if (d.hitLive || d.hitDead) {
+        playSound('hit');
+        addLog('Resultado da Medição: ACERTOU pelo menos um alvo!');
+      } else {
+        playSound('miss');
+        addLog('Resultado da Medição: Errado (vazio nas posições).');
+      }
+
       showModal(
         '⚛️ Resultado da Medição Quântica',
-        `A medição colapsou no estado do vácuo!<br><br>
+        `A medição colapsou!<br><br>
         • Gato Vivo: ${d.hitLive ? '🎯 ATINGIDO!' : '❌ Ausente (Vazio)'}<br>
         • Gato Morto: ${d.hitDead ? '🎯 ATINGIDO!' : '❌ Ausente (Vazio)'}`
       );
@@ -338,9 +393,11 @@
       if (d.winner === myPlayerNumber) {
         showModal('🎉 COLAPSO DA EQUAÇÃO!', 'Parabéns! Você colapsou a função de onda com sucesso e determinou o estado exato dos dois gatos do oponente!');
         setStatus('Você Venceu!');
+        addLog('Fim de jogo: Vitória quântica!');
       } else {
         showModal('💀 COLAPSO DA EQUAÇÃO!', 'O oponente colapsou a sua função de onda primeiro e encontrou seus dois gatos!');
         setStatus('Você Perdeu!');
+        addLog('Fim de jogo: Derrota.');
       }
       gameStage = 'ENDED';
     });
