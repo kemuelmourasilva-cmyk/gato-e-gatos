@@ -17,111 +17,72 @@
     h1 { color: #58a6ff; margin-bottom: 5px; }
     h3 { color: #8b949e; margin-top: 0; font-weight: normal; }
     #lobby {
-      background: #161b22;
-      border: 1px solid #30363d;
-      padding: 30px;
-      border-radius: 12px;
-      display: inline-block;
-      margin-top: 50px;
+      background: #161b22; border: 1px solid #30363d;
+      padding: 30px; border-radius: 12px; display: inline-block; margin-top: 50px;
     }
-    input {
-      padding: 10px;
-      font-size: 1rem;
-      border-radius: 6px;
-      border: 1px solid #30363d;
-      background: #0d1117;
-      color: white;
-      margin-right: 10px;
-    }
+    input { padding: 10px; font-size: 1rem; border-radius: 6px; border: 1px solid #30363d; background: #0d1117; color: white; margin-right: 10px; }
     #game-area { display: none; }
     #status-bar {
-      background: #161b22;
-      border: 1px solid #30363d;
-      padding: 12px;
-      border-radius: 8px;
-      display: inline-block;
-      margin-bottom: 20px;
-      font-weight: bold;
-      color: #79c0ff;
+      background: #161b22; border: 1px solid #30363d; padding: 12px;
+      border-radius: 8px; display: inline-block; margin-bottom: 15px; font-weight: bold; color: #79c0ff;
     }
-    .boards-container {
-      display: flex;
-      justify-content: center;
-      gap: 20px;
-      flex-wrap: wrap;
+    /* Painel Quântico (Dado e Carta) */
+    .quantum-panel {
+      background: #1f242c; border: 2px dashed #8957e5; border-radius: 10px;
+      padding: 15px; max-width: 500px; margin: 0 auto 20px auto; display: none;
     }
-    .board-box {
-      background: #161b22;
-      border: 2px solid #30363d;
-      border-radius: 12px;
-      padding: 15px;
+    .card-box {
+      background: #161b22; border: 1px solid #8957e5; border-radius: 8px;
+      padding: 10px; margin-top: 10px; color: #d2a8ff;
     }
+    .boards-container { display: flex; justify-content: center; gap: 15px; flex-wrap: wrap; }
+    .board-box { background: #161b22; border: 2px solid #30363d; border-radius: 12px; padding: 12px; }
     .board-box.live { border-color: #2ea043; }
     .board-box.dead { border-color: #da3633; }
     .board-box.enemy { border-color: #d29922; }
-    .board-title { font-size: 1.1rem; margin-bottom: 10px; font-weight: bold; }
-    .grid {
-      display: grid;
-      grid-template-columns: repeat(5, 45px);
-      grid-template-rows: repeat(5, 45px);
-      gap: 4px;
-    }
+    .board-title { font-size: 1rem; margin-bottom: 8px; font-weight: bold; }
+    .grid { display: grid; grid-template-columns: repeat(5, 40px); grid-template-rows: repeat(5, 40px); gap: 3px; }
     .cell {
-      width: 45px;
-      height: 45px;
-      background: #21262d;
-      border: 1px solid #30363d;
-      border-radius: 6px;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      font-size: 1.3rem;
-      cursor: pointer;
-      user-select: none;
+      width: 40px; height: 40px; background: #21262d; border: 1px solid #30363d;
+      border-radius: 6px; display: flex; align-items: center; justify-content: center; font-size: 1.2rem; cursor: pointer; user-select: none;
     }
     .cell:hover { background: #30363d; }
     .cell.cat-live { background: #238636; }
     .cell.cat-dead { background: #da3633; }
     .cell.guess-live { background: #1f6feb; }
     .cell.guess-dead { background: #8957e5; }
-    .controls {
-      margin-top: 20px;
-      display: flex;
-      justify-content: center;
-      gap: 15px;
-    }
-    button {
-      background: #238636;
-      color: white;
-      border: none;
-      padding: 10px 20px;
-      font-size: 1rem;
-      border-radius: 6px;
-      cursor: pointer;
-    }
+    .controls { margin-top: 20px; display: flex; justify-content: center; gap: 15px; }
+    button { background: #238636; color: white; border: none; padding: 10px 20px; font-size: 1rem; border-radius: 6px; cursor: pointer; }
     button:hover { background: #2ea043; }
+    button:disabled { background: #30363d; cursor: not-allowed; }
   </style>
 </head>
 <body>
 
   <h1>🐱 Gatos e Gatos: Vivo ou Morto 🐱</h1>
-  <h3>Jogo Estratégico de Emaranhamento Quântico</h3>
+  <h3>Mecânica Probabilística & Cartas de Ação Quântica</h3>
 
-  <!-- Tela de Lobby (Salas) -->
   <div id="lobby">
     <h2>Entrar ou Criar Sala</h2>
-    <input type="text" id="room-code-input" placeholder="Digite o código da sala">
+    <input type="text" id="room-code-input" placeholder="Código da Sala">
     <br><br>
     <button onclick="createRoom()">Criar Sala</button>
     <button onclick="joinRoom()">Entrar na Sala</button>
   </div>
 
-  <!-- Área do Jogo -->
   <div id="game-area">
     <div id="status-bar">Aguardando...</div>
 
+    <!-- Painel do Dado Quântico e Carta Sorteada -->
+    <div id="quantum-panel" class="quantum-panel">
+      <h3>⚛️ Turno Probabilístico ⚛️</h3>
+      <button id="btn-dice" onclick="rollDice()">🎲 Rolar Dado Quântico</button>
+      <div id="card-display" class="card-display" style="display:none;">
+        <div id="card-content" class="card-box"></div>
+      </div>
+    </div>
+
     <div class="boards-container">
-      <!-- Seus Gatos -->
       <div class="board-box live">
         <div class="board-title" style="color: #3fb950;">Seu Gato Vivo (|Ψ⟩)</div>
         <div id="grid-live" class="grid"></div>
@@ -130,21 +91,19 @@
         <div class="board-title" style="color: #f85149;">Seu Gato Morto (|Φ⟩)</div>
         <div id="grid-dead" class="grid"></div>
       </div>
-
-      <!-- Tabuleiros de Ataque (Onde você clica para adivinhar os do inimigo) -->
       <div class="board-box enemy">
-        <div class="board-title" style="color: #d29922;">Adivinhar Gato Vivo Inimigo</div>
+        <div class="board-title" style="color: #d29922;">Alvo: Vivo Inimigo</div>
         <div id="grid-enemy-live" class="grid"></div>
       </div>
       <div class="board-box enemy">
-        <div class="board-title" style="color: #d29922;">Adivinhar Gato Morto Inimigo</div>
+        <div class="board-title" style="color: #d29922;">Alvo: Morto Inimigo</div>
         <div id="grid-enemy-dead" class="grid"></div>
       </div>
     </div>
 
     <div class="controls">
       <button id="btn-confirm" onclick="confirmSetup()">Confirmar Posições Iniciais</button>
-      <button id="btn-shoot" onclick="submitObservation()" style="background: #bb8009; display:none;" disabled>🎯 Disparar Medição (Observar)</button>
+      <button id="btn-shoot" onclick="submitObservation()" style="background: #bb8009; display:none;" disabled>🎯 Disparar Medição</button>
     </div>
   </div>
 
@@ -155,32 +114,31 @@
     let myPlayerNumber = null;
     let isMyTurn = false;
     let gameStage = 'SETUP';
+    let hasRolledDice = false;
 
     let myLiveCat = null;
     let myDeadCat = null;
-
     let guessLiveTarget = null;
     let guessDeadTarget = null;
 
     function createRoom() {
       const code = document.getElementById('room-code-input').value.trim();
-      if (!code) { alert('Digite um código para a sala!'); return; }
+      if (!code) { alert('Digite o código!'); return; }
       socket.emit('createRoom', code);
     }
 
     function joinRoom() {
       const code = document.getElementById('room-code-input').value.trim();
-      if (!code) { alert('Digite o código da sala!'); return; }
+      if (!code) { alert('Digite o código!'); return; }
       socket.emit('joinRoom', code);
     }
 
-    socket.on('errorMsg', (msg) => alert(msg));
-
-    socket.on('init', (data) => {
-      myPlayerNumber = data.playerNumber;
+    socket.on('errorMsg', (m) => alert(m));
+    socket.on('init', (d) => {
+      myPlayerNumber = d.playerNumber;
       document.getElementById('lobby').style.display = 'none';
       document.getElementById('game-area').style.display = 'block';
-      setStatus(`Sala: ${data.roomCode} | Jogador ${myPlayerNumber}. Posicione seus gatos clicando nos seus tabuleiros.`);
+      setStatus(`Sala conectada! Jogador ${myPlayerNumber}. Posicione os gatos.`);
       buildAllGrids();
     });
 
@@ -191,17 +149,15 @@
       buildGrid('grid-enemy-dead', (x, y) => handleEnemyGridClick('dead', x, y));
     }
 
-    function buildGrid(containerId, callback) {
-      const grid = document.getElementById(containerId);
-      grid.innerHTML = '';
+    function buildGrid(id, cb) {
+      const g = document.getElementById(id);
+      g.innerHTML = '';
       for (let r = 0; r < BOARD_SIZE; r++) {
         for (let c = 0; c < BOARD_SIZE; c++) {
           const cell = document.createElement('div');
           cell.className = 'cell';
-          cell.dataset.x = c;
-          cell.dataset.y = r;
-          cell.onclick = () => callback(c, r);
-          grid.appendChild(cell);
+          cell.onclick = () => cb(c, r);
+          g.appendChild(cell);
         }
       }
     }
@@ -211,8 +167,7 @@
         if (type === 'live') myLiveCat = { x, y };
         if (type === 'dead') myDeadCat = { x, y };
         renderMyBoards();
-      } else if (gameStage === 'PLAYING' && isMyTurn && type === 'live') {
-        // Movimento espelho
+      } else if (gameStage === 'PLAYING' && isMyTurn && hasRolledDice && type === 'live') {
         const dx = x - myLiveCat.x;
         const dy = y - myLiveCat.y;
         const newDeadX = myDeadCat.x - dx;
@@ -223,138 +178,118 @@
           myDeadCat = { x: newDeadX, y: newDeadY };
           renderMyBoards();
           socket.emit('makeMove', { newLive: myLiveCat, newDead: myDeadCat });
-          setStatus('Movimento realizado! Agora escolha onde atirar no tabuleiro inimigo e clique em "Disparar Medição".');
+          setStatus('Movimento realizado! Selecione os alvos no tabuleiro inimigo e clique em Disparar.');
           document.getElementById('btn-shoot').style.display = 'inline-block';
           document.getElementById('btn-shoot').disabled = false;
+          document.getElementById('quantum-panel').style.display = 'none';
         } else {
-          alert('Movimento inválido! O Gato Morto sairia do tabuleiro.');
+          alert('Movimento espelho inválido fora do tabuleiro!');
         }
+      } else if (isMyTurn && !hasRolledDice) {
+        alert('Você precisa rolar o Dado Quântico primeiro antes de mover!');
       }
     }
 
     function handleEnemyGridClick(type, x, y) {
       if (gameStage !== 'PLAYING' || !isMyTurn) return;
-
       if (type === 'live') guessLiveTarget = { x, y };
       if (type === 'dead') guessDeadTarget = { x, y };
-
       renderEnemyGuesses();
     }
 
+    function rollDice() {
+      socket.emit('rollQuantumDice');
+      document.getElementById('btn-dice').disabled = true;
+    }
+
+    socket.on('diceResult', (data) => {
+      hasRolledDice = true;
+      document.getElementById('card-display').style.display = 'block';
+      document.getElementById('card-content').innerHTML = `<strong>🎲 Resultado: ${data.diceRoll}</strong><br><strong>Carta: ${data.card.name}</strong><br>${data.card.desc}`;
+      setStatus(`Carta ativada! Agora mova seu gato no tabuleiro.`);
+    });
+
     function renderMyBoards() {
-      const gridLive = document.getElementById('grid-live');
-      const gridDead = document.getElementById('grid-dead');
-
+      const gl = document.getElementById('grid-live');
+      const gd = document.getElementById('grid-dead');
       for(let i=0; i<25; i++) {
-        gridLive.children[i].className = 'cell';
-        gridLive.children[i].innerHTML = '';
-        gridDead.children[i].className = 'cell';
-        gridDead.children[i].innerHTML = '';
+        gl.children[i].className = 'cell'; gl.children[i].innerHTML = '';
+        gd.children[i].className = 'cell'; gd.children[i].innerHTML = '';
       }
-
-      if (myLiveCat) {
-        const idx = myLiveCat.y * BOARD_SIZE + myLiveCat.x;
-        gridLive.children[idx].classList.add('cat-live');
-        gridLive.children[idx].innerHTML = '🐱';
-      }
-      if (myDeadCat) {
-        const idx = myDeadCat.y * BOARD_SIZE + myDeadCat.x;
-        gridDead.children[idx].classList.add('cat-dead');
-        gridDead.children[idx].innerHTML = '💀';
-      }
+      if (myLiveCat) { gl.children[myLiveCat.y * BOARD_SIZE + myLiveCat.x].className = 'cell cat-live'; gl.children[myLiveCat.y * BOARD_SIZE + myLiveCat.x].innerHTML = '🐱'; }
+      if (myDeadCat) { gd.children[myDeadCat.y * BOARD_SIZE + myDeadCat.x].className = 'cell cat-dead'; gd.children[myDeadCat.y * BOARD_SIZE + myDeadCat.x].innerHTML = '💀'; }
     }
 
     function renderEnemyGuesses() {
-      const gridELive = document.getElementById('grid-enemy-live');
-      const gridEDead = document.getElementById('grid-enemy-dead');
-
+      const gel = document.getElementById('grid-enemy-live');
+      const ged = document.getElementById('grid-enemy-dead');
       for(let i=0; i<25; i++) {
-        gridELive.children[i].className = 'cell';
-        gridELive.children[i].innerHTML = '';
-        gridEDead.children[i].className = 'cell';
-        gridEDead.children[i].innerHTML = '';
+        gel.children[i].className = 'cell'; gel.children[i].innerHTML = '';
+        ged.children[i].className = 'cell'; ged.children[i].innerHTML = '';
       }
-
-      if (guessLiveTarget) {
-        const idx = guessLiveTarget.y * BOARD_SIZE + guessLiveTarget.x;
-        gridELive.children[idx].classList.add('guess-live');
-        gridELive.children[idx].innerHTML = '🎯';
-      }
-      if (guessDeadTarget) {
-        const idx = guessDeadTarget.y * BOARD_SIZE + guessDeadTarget.x;
-        gridEDead.children[idx].classList.add('guess-dead');
-        gridEDead.children[idx].innerHTML = '🎯';
-      }
+      if (guessLiveTarget) { gel.children[guessLiveTarget.y * BOARD_SIZE + guessLiveTarget.x].className = 'cell guess-live'; gel.children[guessLiveTarget.y * BOARD_SIZE + guessLiveTarget.x].innerHTML = '🎯'; }
+      if (guessDeadTarget) { ged.children[guessDeadTarget.y * BOARD_SIZE + guessDeadTarget.x].className = 'cell guess-dead'; ged.children[guessDeadTarget.y * BOARD_SIZE + guessDeadTarget.x].innerHTML = '🎯'; }
     }
 
     function confirmSetup() {
-      if (!myLiveCat || !myDeadCat) {
-        alert('Posicione o seu Gato Vivo e o seu Gato Morto antes de continuar!');
-        return;
-      }
+      if (!myLiveCat || !myDeadCat) { alert('Posicione os dois gatos!'); return; }
       socket.emit('setInitialPositions', { live: myLiveCat, dead: myDeadCat });
       document.getElementById('btn-confirm').disabled = true;
-      setStatus('Posições confirmadas! Aguardando o oponente...');
+      setStatus('Posições prontas. Aguardando oponente...');
     }
 
     function submitObservation() {
-      if (!guessLiveTarget || !guessDeadTarget) {
-        alert('Selecione uma casa nos dois tabuleiros inimigos para realizar a medição!');
-        return;
-      }
+      if (!guessLiveTarget || !guessDeadTarget) { alert('Selecione alvos nos tabuleiros inimigos!'); return; }
       socket.emit('observe', { targetLive: guessLiveTarget, targetDead: guessDeadTarget });
       document.getElementById('btn-shoot').style.display = 'none';
-      guessLiveTarget = null;
-      guessDeadTarget = null;
+      guessLiveTarget = null; guessDeadTarget = null;
       renderEnemyGuesses();
     }
 
-    function setStatus(msg) {
-      document.getElementById('status-bar').innerText = msg;
-    }
+    function setStatus(msg) { document.getElementById('status-bar').innerText = msg; }
+    socket.on('status', (m) => setStatus(m));
 
-    socket.on('status', (msg) => setStatus(msg));
-
-    socket.on('gameStart', (data) => {
+    socket.on('gameStart', (d) => {
       gameStage = 'PLAYING';
       document.getElementById('btn-confirm').style.display = 'none';
-      isMyTurn = (data.activeTurn === socket.id);
-      
+      isMyTurn = (d.activeTurn === socket.id);
+      hasRolledDice = false;
       if (isMyTurn) {
-        setStatus('Sua vez! Mova seu Gato Vivo em seu tabuleiro e depois selecione o alvo no tabuleiro inimigo.');
+        setStatus('Seu turno! Role o Dado Quântico.');
+        document.getElementById('quantum-panel').style.display = 'block';
+        document.getElementById('btn-dice').disabled = false;
+        document.getElementById('card-display').style.display = 'none';
       } else {
         setStatus("Vez do oponente...");
+        document.getElementById('quantum-panel').style.display = 'none';
       }
     });
 
-    socket.on('updateBoard', (data) => {
-      isMyTurn = (data.nextTurn === socket.id);
+    socket.on('updateBoard', (d) => {
+      isMyTurn = (d.nextTurn === socket.id);
+      hasRolledDice = false;
       if (isMyTurn) {
-        setStatus('Sua vez de jogar!');
+        setStatus('Sua vez! Role o Dado Quântico.');
+        document.getElementById('quantum-panel').style.display = 'block';
+        document.getElementById('btn-dice').disabled = false;
+        document.getElementById('card-display').style.display = 'none';
       } else {
         setStatus('O oponente jogou. Aguardando...');
+        document.getElementById('quantum-panel').style.display = 'none';
       }
     });
 
-    socket.on('observeResult', (data) => {
-      alert(`Resultado da Medição Quântica:\nGato Vivo atingido? ${data.hitLive ? 'SIM 🎯' : 'NÃO ❌'}\nGato Morto atingido? ${data.hitDead ? 'SIM 🎯' : 'NÃO ❌'}`);
+    socket.on('observeResult', (d) => {
+      alert(`Resultado da Medição:\nVivo atingido? ${d.hitLive ? 'SIM 🎯' : 'NÃO ❌'}\nMorto atingido? ${d.hitDead ? 'SIM 🎯' : 'NÃO ❌'}`);
     });
 
-    socket.on('gameOver', (data) => {
-      if (data.winner === myPlayerNumber) {
-        alert('🎉 VITÓRIA QUÂNTICA! Você colapsou a função de onda e encontrou os dois gatos do oponente!');
-        setStatus('Você Venceu!');
-      } else {
-        alert('💀 DERROTA! O oponente descobriu os seus gatos!');
-        setStatus('Você Perdeu!');
-      }
+    socket.on('gameOver', (d) => {
+      if (d.winner === myPlayerNumber) alert('🎉 VITÓRIA! Você encontrou os gatos do oponente.');
+      else alert('💀 DERROTA! O oponente colapsou seus gatos.');
       gameStage = 'ENDED';
     });
 
-    socket.on('playerLeft', (msg) => {
-      alert(msg);
-      location.reload();
-    });
+    socket.on('playerLeft', (m) => { alert(m); location.reload(); });
   </script>
 </body>
 </html>
