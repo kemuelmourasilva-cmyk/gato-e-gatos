@@ -16,7 +16,7 @@ const quantumCards = [
   { id: 2, name: "Quantum Zeno (Efeito Zeno)", desc: "Imobilize o oponente! O oponente perde a chance de observar neste turno." },
   { id: 3, name: "Entanglement Fluctuation", desc: "Desacoplamento! Inverta temporariamente o eixo Y do movimento espelho." },
   { id: 4, name: "Superposition (Superposição)", desc: "O gato esteve em dois lugares! Refaça o movimento de um dos gatos livremente." },
-  { id: 5, name: "Heisenberg Uncertainty", desc: "Princípio da Incerteza! Force o oponente a revelar dicas de posição." },
+  { id: 5, name: "Radar Quântico (Varredura)", desc: "Varredura de Campo! O sistema revela se há algum gato inimigo nas casas adjacentes." },
   { id: 6, name: "Decoherence (Decoerência)", desc: "Colapso térmico! O oponente perde uma tentativa de medição no próximo turno." }
 ];
 
@@ -73,7 +73,7 @@ io.on('connection', (socket) => {
     const drawnCard = quantumCards[diceRoll - 1];
 
     socket.emit('diceResult', { diceRoll, card: drawnCard });
-    io.to(socket.roomCode).emit('status', `Jogador ${room.players[socket.id].number} rolou o dado (🎲 ${diceRoll}) -> [${drawnCard.name}]`);
+    io.to(room.roomCode).emit('status', `Jogador ${room.players[socket.id].number} rolou o dado (🎲 ${diceRoll}) -> [${drawnCard.name}]`);
   });
 
   socket.on('makeMove', (data) => {
@@ -97,10 +97,8 @@ io.on('connection', (socket) => {
     if (hitLive && hitDead) {
       io.to(socket.roomCode).emit('gameOver', { winner: room.players[socket.id].number, type: 'BOTH' });
     } else {
-      // Envia o resultado para quem jogou
       socket.emit('observeResult', { hitLive, hitDead, targetLive: data.targetLive, targetDead: data.targetDead });
       
-      // ALTERAÇÃO CRUCIAL: Passa o turno de forma garantida para o oponente e avisa a sala inteira
       room.gameState.turn = opponentId;
       io.to(socket.roomCode).emit('turnChanged', { nextTurn: room.gameState.turn });
     }
