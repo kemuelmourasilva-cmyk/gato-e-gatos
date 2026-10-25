@@ -10,7 +10,7 @@ const io = new Server(server, { cors: { origin: "*" } });
 app.use(express.static(path.join(__dirname, 'public')));
 
 let rooms = {};
-const TARGET_POINTS = 3; // Quantidade de pontos necessária para vencer por acúmulo
+const TARGET_POINTS = 3;
 
 const quantumCards = [
   { id: 1, name: "Tunneling (Efeito Túnel)", desc: "Atravesse uma barreira! Mova seu gato por cima de uma casa sem quebrar o espelho." },
@@ -23,7 +23,9 @@ const quantumCards = [
 
 io.on('connection', (socket) => {
   socket.on('createRoom', (roomCode) => {
+    if (!roomCode) return socket.emit('errorMsg', 'Código de sala inválido.');
     if (rooms[roomCode]) return socket.emit('errorMsg', 'Esta sala já existe.');
+    
     rooms[roomCode] = { 
       players: {}, 
       gameState: { 
@@ -39,6 +41,7 @@ io.on('connection', (socket) => {
   });
 
   socket.on('joinRoom', (roomCode) => {
+    if (!roomCode) return socket.emit('errorMsg', 'Código de sala inválido.');
     if (!rooms[roomCode]) return socket.emit('errorMsg', 'Sala não encontrada.');
     if (Object.keys(rooms[roomCode].players).length >= 2) return socket.emit('errorMsg', 'Sala cheia.');
     joinRoom(socket, roomCode);
@@ -51,7 +54,7 @@ io.on('connection', (socket) => {
     const playerNumber = Object.keys(room.players).length === 0 ? 1 : 2;
     room.players[socket.id] = { id: socket.id, number: playerNumber, ready: false };
     room.gameState.scores[socket.id] = 0;
-    room.gameState.blockedCells[socket.id] = []; // Casas bloqueadas por '❌' para este jogador
+    room.gameState.blockedCells[socket.id] = [];
 
     socket.emit('init', { playerNumber, boardSize: room.gameState.boardSize, roomCode });
 
@@ -106,7 +109,6 @@ io.on('connection', (socket) => {
     const opponentPos = room.gameState.positions[opponentId];
     const blocked = room.gameState.blockedCells[socket.id] || [];
 
-    // Verifica se alguma das posições escolhidas está bloqueada por '❌' anterior
     const isLiveBlocked = blocked.some(b => b.x === data.targetLive.x && b.y === data.targetLive.y);
     const isDeadBlocked = blocked.some(b => b.x === data.targetDead.x && b.y === data.targetDead.y);
 
@@ -115,7 +117,6 @@ io.on('connection', (socket) => {
       return;
     }
 
-    // Carta 6: Decoerência Térmica
     if (room.gameState.activeCard && room.gameState.activeCard.id === 6) {
       socket.emit('decoherenceHit', 'Decoerência Térmica! A sua medição sofreu interferência e foi anulada neste turno.');
       room.gameState.turn = opponentId;
@@ -127,7 +128,6 @@ io.on('connection', (socket) => {
     const hitLive = (data.targetLive.x === opponentPos.live.x && data.targetLive.y === opponentPos.live.y);
     const hitDead = (data.targetDead.x === opponentPos.dead.x && data.targetDead.y === opponentPos.dead.y);
 
-    // Atualiza pontuação e blocos de erro (❌) para o próximo turno
     let earnedPoints = 0;
     let newBlocked = [];
 
@@ -138,9 +138,8 @@ io.on('connection', (socket) => {
     else newBlocked.push(data.targetDead);
 
     room.gameState.scores[socket.id] += earnedPoints;
-    room.gameState.blockedCells[socket.id] = newBlocked; // Substitui pelos novos erros que bloqueiam o próximo tiro
+    room.gameState.blockedCells[socket.id] = newBlocked;
 
-    // Condição de Vitória 1: Colapso Total (Achar ambos no mesmo tiro) ou Atingir a pontuação alvo
     if ((hitLive && hitDead) || room.gameState.scores[socket.id] >= TARGET_POINTS) {
       io.to(socket.roomCode).emit('gameOver', { 
         winner: room.players[socket.id].number, 
