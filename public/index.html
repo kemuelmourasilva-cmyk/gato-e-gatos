@@ -6,83 +6,196 @@
   <title>Gatos e Gatos: Vivo ou Morto, És a Questão!</title>
   <script src="/socket.io/socket.io.js"></script>
   <style>
+    /* Fundo Animado e Estética de Supercomputador Quântico */
     body {
-      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-      background-color: #0d1117; color: #c9d1d9; text-align: center; margin: 0; padding: 20px;
+      font-family: 'Courier New', Courier, monospace;
+      background-color: #030712;
+      color: #38bdf8;
+      text-align: center;
+      margin: 0;
+      padding: 20px;
+      overflow-x: hidden;
+      position: relative;
     }
-    h1 { color: #58a6ff; margin-bottom: 5px; }
-    h3 { color: #8b949e; margin-top: 0; font-weight: normal; }
+
+    /* Animação de Fundo (Partículas Quânticas / Linhas de Fluxo) */
+    body::before {
+      content: "";
+      position: fixed;
+      top: 0; left: 0; width: 100%; height: 100%;
+      background: linear-gradient(rgba(3, 7, 18, 0.9), rgba(3, 7, 18, 0.95)), 
+                  radial-gradient(circle, rgba(56, 189, 248, 0.05) 10%, transparent 10%);
+      background-size: 30px 30px;
+      z-index: -1;
+      animation: matrixFlow 20s linear infinite;
+    }
+
+    @keyframes matrixFlow {
+      0% { background-position: 0 0; }
+      100% { background-position: 0 600px; }
+    }
+
+    h1 { color: #38bdf8; text-shadow: 0 0 15px rgba(56, 189, 248, 0.5); margin-bottom: 5px; letter-spacing: 2px; }
+    h3 { color: #94a3b8; margin-top: 0; font-weight: normal; letter-spacing: 1px; }
+
     #lobby {
-      background: #161b22; border: 1px solid #30363d; padding: 30px; border-radius: 12px; display: inline-block; margin-top: 50px;
+      background: rgba(15, 23, 42, 0.9);
+      border: 1px solid #0284c7;
+      box-shadow: 0 0 20px rgba(2, 132, 199, 0.2);
+      padding: 30px;
+      border-radius: 12px;
+      display: inline-block;
+      margin-top: 50px;
     }
-    input { padding: 10px; font-size: 1rem; border-radius: 6px; border: 1px solid #30363d; background: #0d1117; color: white; margin-right: 10px; }
+
+    input {
+      padding: 10px; font-size: 1rem; border-radius: 6px;
+      border: 1px solid #0284c7; background: #020617; color: #38bdf8; margin-right: 10px;
+      font-family: monospace; outline: none;
+    }
+
     #game-area { display: none; }
+
     #status-bar {
-      background: #161b22; border: 1px solid #30363d; padding: 12px;
-      border-radius: 8px; display: inline-block; margin-bottom: 10px; font-weight: bold; color: #79c0ff;
+      background: rgba(15, 23, 42, 0.95);
+      border: 1px solid #38bdf8;
+      box-shadow: 0 0 10px rgba(56, 189, 248, 0.3);
+      padding: 12px 20px;
+      border-radius: 8px;
+      display: inline-block;
+      margin-bottom: 15px;
+      font-weight: bold;
+      color: #38bdf8;
+      text-transform: uppercase;
+      letter-spacing: 1px;
     }
+
+    /* Estilo Supercomputador / Terminal Avançado */
+    #log-box {
+      background: #000000;
+      border: 1px solid #22c55e;
+      box-shadow: inset 0 0 15px rgba(34, 197, 94, 0.2), 0 0 10px rgba(34, 197, 94, 0.3);
+      border-radius: 6px;
+      padding: 12px;
+      max-width: 650px;
+      height: 110px;
+      margin: 0 auto 20px auto;
+      overflow-y: auto;
+      text-align: left;
+      font-family: 'Courier New', Courier, monospace;
+      font-size: 0.85rem;
+      color: #4ade80;
+    }
+
+    #log-box::after {
+      content: "_";
+      animation: blink 1s infinite;
+    }
+
+    @keyframes blink {
+      0%, 100% { opacity: 1; }
+      50% { opacity: 0; }
+    }
+
     .quantum-panel {
-      background: #1f242c; border: 2px dashed #8957e5; border-radius: 10px;
-      padding: 15px; max-width: 500px; margin: 0 auto 15px auto; display: none;
+      background: rgba(15, 23, 42, 0.9);
+      border: 2px dashed #a855f7;
+      box-shadow: 0 0 15px rgba(168, 85, 247, 0.3);
+      border-radius: 10px;
+      padding: 15px;
+      max-width: 500px;
+      margin: 0 auto 20px auto;
+      display: none;
     }
-    .card-box { background: #161b22; border: 1px solid #8957e5; border-radius: 8px; padding: 10px; margin-top: 10px; color: #d2a8ff; }
+
+    .card-box {
+      background: #090d16;
+      border: 1px solid #a855f7;
+      border-radius: 8px;
+      padding: 12px;
+      margin-top: 10px;
+      color: #e879f9;
+      box-shadow: 0 0 10px rgba(168, 85, 247, 0.2);
+    }
+
     .boards-container { display: flex; justify-content: center; gap: 15px; flex-wrap: wrap; }
-    .board-box { background: #161b22; border: 2px solid #30363d; border-radius: 12px; padding: 12px; }
-    .board-box.live { border-color: #2ea043; }
-    .board-box.dead { border-color: #da3633; }
-    .board-box.enemy { border-color: #d29922; opacity: 0.5; pointer-events: none; }
-    .board-box.enemy.active { opacity: 1; pointer-events: auto; }
-    .board-title { font-size: 1rem; margin-bottom: 8px; font-weight: bold; }
-    .grid { display: grid; grid-template-columns: repeat(5, 40px); grid-template-rows: repeat(5, 40px); gap: 3px; }
-    .cell {
-      width: 40px; height: 40px; background: #21262d; border: 1px solid #30363d;
-      border-radius: 6px; display: flex; align-items: center; justify-content: center; font-size: 1.2rem; cursor: pointer; user-select: none;
+    
+    .board-box {
+      background: rgba(15, 23, 42, 0.9);
+      border: 2px solid #334155;
+      border-radius: 12px;
+      padding: 12px;
+      box-shadow: 0 4px 15px rgba(0,0,0,0.5);
     }
-    .cell:hover { background: #30363d; }
-    .cell.cat-live { background: #238636; }
-    .cell.cat-dead { background: #da3633; }
-    .cell.guess-live { background: #1f6feb; }
-    .cell.guess-dead { background: #8957e5; }
-    .cell.missed { background: #30363d; color: #f85149; font-weight: bold; }
-    .cell.hit { background: #238636; color: #7ee787; font-weight: bold; }
-    .controls { margin-top: 20px; display: flex; justify-content: center; gap: 15px; }
-    button { background: #238636; color: white; border: none; padding: 10px 20px; font-size: 1rem; border-radius: 6px; cursor: pointer; }
-    button:hover { background: #2ea043; }
-    button:disabled { background: #30363d; cursor: not-allowed; }
+    .board-box.live { border-color: #22c55e; box-shadow: 0 0 15px rgba(34, 197, 94, 0.2); }
+    .board-box.dead { border-color: #ef4444; box-shadow: 0 0 15px rgba(239, 68, 68, 0.2); }
+    .board-box.enemy { border-color: #eab308; opacity: 0.4; pointer-events: none; }
+    .board-box.enemy.active { opacity: 1; pointer-events: auto; box-shadow: 0 0 15px rgba(234, 179, 8, 0.3); }
+    
+    .board-title { font-size: 0.95rem; margin-bottom: 8px; font-weight: bold; letter-spacing: 1px; }
+
+    .grid { display: grid; grid-template-columns: repeat(5, 42px); grid-template-rows: repeat(5, 42px); gap: 4px; }
+    
+    .cell {
+      width: 42px; height: 42px; background: #020617; border: 1px solid #1e293b;
+      border-radius: 6px; display: flex; align-items: center; justify-content: center; font-size: 1.2rem; cursor: pointer; user-select: none;
+      transition: all 0.2s ease;
+    }
+    .cell:hover { background: #1e293b; border-color: #38bdf8; box-shadow: 0 0 8px rgba(56, 189, 248, 0.4); }
+    .cell.cat-live { background: #15803d; border-color: #22c55e; }
+    .cell.cat-dead { background: #b91c1c; border-color: #ef4444; }
+    .cell.guess-live { background: #1d4ed8; border-color: #3b82f6; }
+    .cell.guess-dead { background: #7e22ce; border-color: #a855f7; }
+    .cell.missed { background: #0f172a; color: #f87171; font-weight: bold; border-color: #7f1d1d; }
+    .cell.hit { background: #14532d; color: #4ade80; font-weight: bold; border-color: #166534; }
+
+    .controls { margin-top: 25px; display: flex; justify-content: center; gap: 15px; }
+    
+    button {
+      background: #16a34a; color: white; border: none; padding: 12px 24px;
+      font-size: 1rem; border-radius: 6px; cursor: pointer; font-family: monospace; font-weight: bold;
+      box-shadow: 0 0 10px rgba(22, 163, 74, 0.4);
+      transition: all 0.2s;
+    }
+    button:hover { background: #22c55e; box-shadow: 0 0 15px rgba(34, 197, 94, 0.6); transform: translateY(-1px); }
+    button:disabled { background: #334155; color: #64748b; cursor: not-allowed; box-shadow: none; }
 
     .modal-overlay {
       position: fixed; top: 0; left: 0; width: 100%; height: 100%;
-      background: rgba(0,0,0,0.8); display: none; align-items: center; justify-content: center; z-index: 100;
+      background: rgba(3, 7, 18, 0.85); backdrop-filter: blur(5px);
+      display: none; align-items: center; justify-content: center; z-index: 100;
     }
     .modal-content {
-      background: #161b22; border: 2px solid #8957e5; padding: 25px; border-radius: 12px; max-width: 400px; text-align: center;
+      background: #0f172a; border: 2px solid #a855f7; box-shadow: 0 0 25px rgba(168, 85, 247, 0.4);
+      padding: 25px; border-radius: 12px; max-width: 400px; text-align: center; color: #f1f5f9;
     }
-    .modal-content h2 { margin-top: 0; color: #58a6ff; }
+    .modal-content h2 { margin-top: 0; color: #38bdf8; }
   </style>
 </head>
 <body>
 
-  <h1>🐱 Gatos e Gatos: Vivo ou Morto 🐱</h1>
-  <h3>Mecânica Probabilística & Cartas de Ação Quântica</h3>
+  <h1>⚡ QUANTUM_CAT_LAB // v2.0 ⚡</h1>
+  <h3>Sistema de Superposição & Mapeamento Probabilístico</h3>
 
   <div id="lobby">
-    <h2>Entrar ou Criar Sala</h2>
-    <input type="text" id="room-code-input" placeholder="Código da Sala">
+    <h2>[ CONECTAR_AO_TERMINAL ]</h2>
+    <input type="text" id="room-code-input" placeholder="DIGITE O CÓDIGO DA SALA">
     <br><br>
-    <button onclick="createRoom()">Criar Sala</button>
-    <button onclick="joinRoom()">Entrar na Sala</button>
+    <button onclick="createRoom()">CRIAÇÃO DE SALA</button>
+    <button onclick="joinRoom()">ACESSAR SALA</button>
   </div>
 
   <div id="game-area">
-    <div id="status-bar">Aguardando...</div>
+    <div id="status-bar">[SISTEMA PRONTO] Aguardando diretrizes...</div>
 
-    <div id="log-box" style="background: #010409; border: 1px solid #30363d; border-radius: 8px; padding: 10px; max-width: 600px; height: 90px; margin: 0 auto 15px auto; overflow-y: auto; text-align: left; font-family: monospace; font-size: 0.85rem; color: #8b949e;">
-      <div>[Sistema] Laboratório Quântico inicializado. Aguardando eventos...</div>
+    <!-- Terminal Quântico Estilo Supercomputador -->
+    <div id="log-box">
+      <div>[SYS_CORE] Núcleo Quântico inicializado com sucesso. Canal seguro aberto.</div>
     </div>
 
     <div id="quantum-panel" class="quantum-panel">
-      <h3>⚛️ Turno Probabilístico ⚛️</h3>
-      <button id="btn-dice" onclick="rollDice()">🎲 Rolar Dado Quântico</button>
+      <h3>⚛️ FLUXO DE COMPUTAÇÃO QUÂNTICA ⚛️</h3>
+      <button id="btn-dice" onclick="rollDice()">🎲 EXECUTAR DADO QUÂNTICO</button>
       <div id="card-display" style="display:none;">
         <div id="card-content" class="card-box"></div>
       </div>
@@ -90,34 +203,34 @@
 
     <div class="boards-container">
       <div class="board-box live">
-        <div class="board-title" style="color: #3fb950;">Seu Gato Vivo (|Ψ⟩)</div>
+        <div class="board-title" style="color: #4ade80;">SEU GATO VIVO (|Ψ⟩)</div>
         <div id="grid-live" class="grid"></div>
       </div>
       <div class="board-box dead">
-        <div class="board-title" style="color: #f85149;">Seu Gato Morto (|Φ⟩)</div>
+        <div class="board-title" style="color: #f87171;">SEU GATO MORTO (|Φ⟩)</div>
         <div id="grid-dead" class="grid"></div>
       </div>
       <div id="box-enemy-live" class="board-box enemy">
-        <div class="board-title" style="color: #d29922;">Alvo: Vivo Inimigo</div>
+        <div class="board-title" style="color: #facc15;">ALVO: VIVO INIMIGO</div>
         <div id="grid-enemy-live" class="grid"></div>
       </div>
       <div id="box-enemy-dead" class="board-box enemy">
-        <div class="board-title" style="color: #d29922;">Alvo: Morto Inimigo</div>
+        <div class="board-title" style="color: #facc15;">ALVO: MORTO INIMIGO</div>
         <div id="grid-enemy-dead" class="grid"></div>
       </div>
     </div>
 
     <div class="controls">
-      <button id="btn-confirm" onclick="confirmSetup()">Confirmar Posições Iniciais</button>
-      <button id="btn-shoot" onclick="submitObservation()" style="background: #bb8009; display:none;" disabled>🎯 Disparar Medição</button>
+      <button id="btn-confirm" onclick="confirmSetup()">CONFIRMAR POSIÇÕES INICIAIS</button>
+      <button id="btn-shoot" onclick="submitObservation()" style="background: #ca8a04; display:none;" disabled>🎯 DISPARAR MEDIÇÃO</button>
     </div>
   </div>
 
   <div id="popup-modal" class="modal-overlay">
     <div class="modal-content">
-      <h2 id="modal-title">Resultado da Medição</h2>
+      <h2 id="modal-title">RELATÓRIO DE MEDIÇÃO</h2>
       <p id="modal-body"></p>
-      <button onclick="closeModal()">Continuar</button>
+      <button onclick="closeModal()">CONTINUAR OPERAÇÃO</button>
     </div>
   </div>
 
@@ -194,8 +307,8 @@
       myPlayerNumber = d.playerNumber;
       document.getElementById('lobby').style.display = 'none';
       document.getElementById('game-area').style.display = 'block';
-      setStatus(`Sala conectada! Jogador ${myPlayerNumber}. Posicione seus dois gatos.`);
-      addLog(`Entrou na sala como Jogador ${myPlayerNumber}.`);
+      setStatus(`TERMINAL CONECTADO - JOGADOR ${myPlayerNumber}. Posicione suas unidades.`);
+      addLog(`Acesso autorizado como Jogador ${myPlayerNumber}.`);
       buildAllGrids();
     });
 
@@ -226,7 +339,6 @@
         renderMyBoards();
       } else if (gameStage === 'PLAYING' && isMyTurn && hasRolledDice) {
         
-        // Carta 4: Superposição
         if (currentCardId === 4) {
           if (type === 'live') myLiveCat = { x, y };
           if (type === 'dead') myDeadCat = { x, y };
@@ -234,7 +346,6 @@
           return;
         }
 
-        // Carta 1: Efeito Túnel
         if (currentCardId === 1 && type === 'live') {
           const dx = x - myLiveCat.x;
           const dy = y - myLiveCat.y;
@@ -244,14 +355,13 @@
           if (newDeadX >= 0 && newDeadX < BOARD_SIZE && newDeadY >= 0 && newDeadY < BOARD_SIZE) {
             myLiveCat = { x, y };
             myDeadCat = { x: newDeadX, y: newDeadY };
-            finishTurnAfterMove(`Efeito Túnel ativado! Salto quântico para (${x},${y}).`);
+            finishTurnAfterMove(`Efeito Túnel ativado! Salto para (${x},${y}).`);
           } else {
-            alert('Túnel inválido! O gato morto sairia dos limites do tabuleiro.');
+            alert('Túnel inválido! Unidade excederia os limites do sistema.');
           }
           return;
         }
 
-        // Movimento Espelho padrão
         if (type === 'live') {
           const dx = x - myLiveCat.x;
           const dy = y - myLiveCat.y;
@@ -261,16 +371,16 @@
           if (newDeadX >= 0 && newDeadX < BOARD_SIZE && newDeadY >= 0 && newDeadY < BOARD_SIZE) {
             myLiveCat = { x, y };
             myDeadCat = { x: newDeadX, y: newDeadY };
-            finishTurnAfterMove(`Movimento espelho executado. Gato Vivo em (${x},${y}).`);
+            finishTurnAfterMove(`Movimento espelho executado. Vivo em (${x},${y}).`);
           } else {
-            alert('Movimento espelho inválido fora do tabuleiro!');
+            alert('Coordenadas de espelho inválidas fora da matriz!');
           }
         } else {
-          alert('No movimento padrão, clique no seu tabuleiro do Gato Vivo para mover ambos!');
+          alert('No modo padrão, selecione o setor do Gato Vivo para calcular o espelho!');
         }
 
       } else if (isMyTurn && !hasRolledDice) {
-        alert('Role o Dado Quântico primeiro!');
+        alert('Execute o Dado Quântico primeiro!');
       }
     }
 
@@ -282,7 +392,7 @@
       document.getElementById('box-enemy-live').classList.add('active');
       document.getElementById('box-enemy-dead').classList.add('active');
       
-      setStatus('Movimento realizado! Escolha os alvos no tabuleiro inimigo e clique em Disparar.');
+      setStatus('Movimento computado! Selecione os alvos no setor inimigo.');
       document.getElementById('btn-shoot').style.display = 'inline-block';
       document.getElementById('btn-shoot').disabled = false;
       document.getElementById('quantum-panel').style.display = 'none';
@@ -304,11 +414,11 @@
       hasRolledDice = true;
       currentCardId = data.card.id;
       playSound('dice');
-      addLog(`Dado Quântico rolado: 🎲 ${data.diceRoll} | Carta: ${data.card.name}`);
+      addLog(`Dado Quântico: 🎲 ${data.diceRoll} | Protocolo: ${data.card.name}`);
       
       document.getElementById('card-display').style.display = 'block';
-      document.getElementById('card-content').innerHTML = `<strong>🎲 Dado: ${data.diceRoll}</strong><br><strong>Carta: ${data.card.name}</strong><br>${data.card.desc}`;
-      setStatus(`Carta ativa! Mova seu gato no tabuleiro.`);
+      document.getElementById('card-content').innerHTML = `<strong>🎲 Dado: ${data.diceRoll}</strong><br><strong>Protocolo: ${data.card.name}</strong><br>${data.card.desc}`;
+      setStatus(`Protocolo ativo! Efetue o movimento na matriz.`);
     });
 
     function renderMyBoards() {
@@ -347,17 +457,17 @@
     }
 
     function confirmSetup() {
-      if (!myLiveCat || !myDeadCat) return alert('Posicione o Gato Vivo e o Gato Morto!');
+      if (!myLiveCat || !myDeadCat) return alert('Posicione o Gato Vivo e o Gato Morto na matriz!');
       socket.emit('setInitialPositions', { live: myLiveCat, dead: myDeadCat });
       document.getElementById('btn-confirm').disabled = true;
-      setStatus('Posições confirmadas. Aguardando o oponente...');
-      addLog('Posições iniciais definidas no laboratório.');
+      setStatus('Configuração salva. Sincronizando com o oponente...');
+      addLog('Posições iniciais bloqueadas no sistema.');
     }
 
     function submitObservation() {
-      if (!guessLiveTarget || !guessDeadTarget) return alert('Selecione alvos nos dois tabuleiros inimigos!');
+      if (!guessLiveTarget || !guessDeadTarget) return alert('Selecione alvos em ambos os setores inimigos!');
       socket.emit('observe', { targetLive: guessLiveTarget, targetDead: guessDeadTarget });
-      addLog('Disparo de medição quântica efetuado.');
+      addLog('Varredura de medição quântica disparada.');
       
       document.getElementById('btn-shoot').style.display = 'none';
       document.getElementById('box-enemy-live').classList.remove('active');
@@ -370,7 +480,7 @@
     socket.on('gameStart', (d) => {
       gameStage = 'PLAYING';
       document.getElementById('btn-confirm').style.display = 'none';
-      addLog('Partida iniciada! As funções de onda estão ativas.');
+      addLog('Simulação iniciada! Função de onda ativada.');
       updateTurnState(d.activeTurn);
     });
 
@@ -387,13 +497,13 @@
       renderEnemyGridState();
 
       if (isMyTurn) {
-        setStatus('Seu turno! Role o Dado Quântico.');
-        addLog('Início do seu turno.');
+        setStatus('Seu turno! Execute o Dado Quântico.');
+        addLog('Início do seu ciclo de processamento.');
         document.getElementById('quantum-panel').style.display = 'block';
         document.getElementById('btn-dice').disabled = false;
         document.getElementById('card-display').style.display = 'none';
       } else {
-        setStatus("Vez do oponente jogar...");
+        setStatus("Processando turno do oponente...");
         document.getElementById('quantum-panel').style.display = 'none';
         document.getElementById('box-enemy-live').classList.remove('active');
         document.getElementById('box-enemy-dead').classList.remove('active');
@@ -414,31 +524,31 @@
         playSound('miss');
       }
 
-      addLog(`Medição parcial: Vivo (${d.hitLive ? '🎯 ACERTOU' : '❌ ERROU'}) | Morto (${d.hitDead ? '🎯 ACERTOU' : '❌ ERROU'})`);
+      addLog(`Varredura parcial: Vivo (${d.hitLive ? '🎯 ALVO' : '❌ VAZIO'}) | Morto (${d.hitDead ? '🎯 ALVO' : '❌ VAZIO'})`);
 
       showModal(
-        '⚛️ Resultado da Medição Parcial',
-        `A medição foi efetuada, mas o sistema continua em superposição!<br><br>
-        • Gato Vivo: ${d.hitLive ? '🎯 ATINGIDO!' : '❌ Ausente (Vazio)'}<br>
-        • Gato Morto: ${d.hitDead ? '🎯 ATINGIDO!' : '❌ Ausente (Vazio)'}`
+        '⚛️ RELATÓRIO DE VARREDURA',
+        `Medição executada, estado em superposição mantido.<br><br>
+        • Gato Vivo: ${d.hitLive ? '🎯 IMPACTO NO ALVO!' : '❌ Vazio'}<br>
+        • Gato Morto: ${d.hitDead ? '🎯 IMPACTO NO ALVO!' : '❌ Vazio'}`
       );
     });
 
     socket.on('decoherenceHit', (msg) => {
       playSound('miss');
-      addLog('Decoerência Térmica ativada: Tentativa de medição anulada.');
-      showModal('⚠️ Decoerência Térmica', msg);
+      addLog('Decoerência Térmica: Ciclo de medição interceptado.');
+      showModal('⚠️ DECOERÊNCIA TÉRMICA', msg);
     });
 
     socket.on('gameOver', (d) => {
       if (d.winner === myPlayerNumber) {
-        showModal('🎉 COLAPSO TOTAL DA EQUAÇÃO!', 'Parabéns! Você encontrou os dois gatos do oponente e colapsou a função de onda!');
-        setStatus('Você Venceu!');
-        addLog('Fim de jogo: Vitória Quântica Total!');
+        showModal('🎉 COLAPSO TOTAL DA EQUAÇÃO!', 'Parabéns! Função de onda colapsada com sucesso. Você localizou ambos os alvos!');
+        setStatus('SISTEMA VITORIOSO');
+        addLog('Fim de simulação: Vitória total.');
       } else {
-        showModal('💀 COLAPSO TOTAL DA EQUAÇÃO!', 'O oponente encontrou seus dois gatos e venceu a partida!');
-        setStatus('Você Perdeu!');
-        addLog('Fim de jogo: Derrota.');
+        showModal('💀 COLAPSO TOTAL DA EQUAÇÃO!', 'O oponente colapsou sua função de onda primeiro. Suas unidades foram detectadas.');
+        setStatus('SISTEMA DERROTADO');
+        addLog('Fim de simulação: Derrota.');
       }
       gameStage = 'ENDED';
     });
