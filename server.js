@@ -13,13 +13,12 @@ app.use(express.static(path.join(__dirname, 'public')));
 
 let rooms = {};
 
-// Baralho de Cartas Quânticas inspiradas em problemas e conceitos físicos
 const quantumCards = [
   { id: 1, name: "Tunneling (Efeito Túnel)", desc: "Atravesse uma barreira! Mova seu gato por cima de uma casa sem quebrar o espelho." },
   { id: 2, name: "Quantum Zeno (Efeito Zeno)", desc: "Imobilize o oponente! O oponente perde a chance de observar neste turno." },
-  { id: 3, name: "Entanglement Fluctuation", desc: "Desacoplamento! Inverta temporariamente o eixo Y do movimento espelho do oponente." },
-  { id: 4, name: "Superposition (Superposição)", desc: "O gato esteve em dois lugares! Escolha refazer o movimento de um dos gatos livremente." },
-  { id: 5, name: "Heisenberg Uncertainty", desc: "Princípio da Incerteza! Force o oponente a revelar se o Gato Vivo está na metade esquerda ou direita." },
+  { id: 3, name: "Entanglement Fluctuation", desc: "Desacoplamento! Inverta temporariamente o eixo Y do movimento espelho." },
+  { id: 4, name: "Superposition (Superposição)", desc: "O gato esteve em dois lugares! Refaça o movimento de um dos gatos livremente." },
+  { id: 5, name: "Heisenberg Uncertainty", desc: "Princípio da Incerteza! Force o oponente a revelar dicas de posição." },
   { id: 6, name: "Decoherence (Decoerência)", desc: "Colapso térmico! O oponente perde uma tentativa de medição no próximo turno." }
 ];
 
@@ -60,12 +59,13 @@ io.on('connection', (socket) => {
     socket.emit('init', { playerNumber, boardSize: room.gameState.boardSize, roomCode });
 
     if (Object.keys(room.players).length === 2) {
-      io.to(roomCode).emit('status', 'Ambos na sala! Posicionem os gatos.');
+      io.to(roomCode).emit('status', 'Ambos conectados! Posicionem seus gatos antes de iniciar as medições.');
     } else {
       socket.emit('status', 'Aguardando o segundo jogador...');
     }
   }
 
+  // Trava o jogo até ambos posicionarem
   socket.on('setInitialPositions', (data) => {
     const room = rooms[socket.roomCode];
     if (!room) return;
@@ -78,22 +78,20 @@ io.on('connection', (socket) => {
       room.gameState.turn = p1Socket;
       io.to(socket.roomCode).emit('gameStart', { activeTurn: room.gameState.turn });
     } else {
-      socket.emit('status', 'Posições salvas! Aguardando oponente...');
+      socket.emit('status', 'Posições salvas! Aguardando o oponente terminar de posicionar...');
     }
   });
 
-  // Rolar o Dado Quântico e sortear a Carta de Ação no Turno
   socket.on('rollQuantumDice', () => {
     const room = rooms[socket.roomCode];
     if (!room || room.gameState.turn !== socket.id) return;
 
     const diceRoll = Math.floor(Math.random() * 6) + 1;
-    const drawnCard = quantumCards[diceRoll - 1]; // O número do dado escolhe a carta correspondente
-
+    const drawnCard = quantumCards[diceRoll - 1];
     room.gameState.activeCard = drawnCard;
 
     socket.emit('diceResult', { diceRoll, card: drawnCard });
-    io.to(socket.roomCode).emit('status', `Jogador ${room.players[socket.id].number} rolou o dado quântico (🎲 ${diceRoll}) e obteve a carta: [${drawnCard.name}]!`);
+    io.to(socket.roomCode).emit('status', `Jogador ${room.players[socket.id].number} rolou o dado quântico (🎲 ${diceRoll}) -> Carta: [${drawnCard.name}]`);
   });
 
   socket.on('makeMove', (data) => {
@@ -107,7 +105,7 @@ io.on('connection', (socket) => {
     room.gameState.turn = playerIds.find(id => id !== socket.id);
     room.gameState.activeCard = null;
 
-    io.to(roomCode).emit('updateBoard', { nextTurn: room.gameState.turn });
+    io.to(socket.roomCode).emit('updateBoard', { nextTurn: room.gameState.turn });
   });
 
   socket.on('observe', (data) => {
