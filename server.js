@@ -17,13 +17,13 @@ const quantumCards = [
   { id: 3, name: "Entanglement Fluctuation", desc: "Desacoplamento! Inverta temporariamente o eixo Y do movimento espelho." },
   { id: 4, name: "Superposition (Superposição)", desc: "O gato esteve em dois lugares! Refaça o movimento de um dos gatos livremente." },
   { id: 5, name: "Radar Quântico (Varredura)", desc: "Varredura de Campo! O sistema revela se há algum gato inimigo nas casas adjacentes." },
-  { id: 6, name: "Decoherence (Decoerência)", desc: "Colapso térmico! O oponente perde uma tentativa de medição no próximo turno." }
+  { id: 6, name: "Decoherence (Decoerência)", desc: "Colapso térmico! O oponente sofre interferência e perde a tentativa de medição neste turno." }
 ];
 
 io.on('connection', (socket) => {
   socket.on('createRoom', (roomCode) => {
     if (rooms[roomCode]) return socket.emit('errorMsg', 'Esta sala já existe.');
-    rooms[roomCode] = { players: {}, gameState: { boardSize: 5, positions: {}, turn: null } };
+    rooms[roomCode] = { players: {}, gameState: { boardSize: 5, positions: {}, turn: null, activeCard: null } };
     joinRoom(socket, roomCode);
   });
 
@@ -71,6 +71,7 @@ io.on('connection', (socket) => {
 
     const diceRoll = Math.floor(Math.random() * 6) + 1;
     const drawnCard = quantumCards[diceRoll - 1];
+    room.gameState.activeCard = drawnCard;
 
     socket.emit('diceResult', { diceRoll, card: drawnCard });
     io.to(room.roomCode).emit('status', `Jogador ${room.players[socket.id].number} rolou o dado (🎲 ${diceRoll}) -> [${drawnCard.name}]`);
@@ -91,6 +92,15 @@ io.on('connection', (socket) => {
     const opponentId = Object.keys(room.players).find(id => id !== socket.id);
     const opponentPos = room.gameState.positions[opponentId];
 
+    // Se a carta ativa for a 6 (Decoerência), o tiro é anulado por interferência térmica
+    if (room.gameState.activeCard && room.gameState.activeCard.id === 6) {
+      socket.emit('decoherenceHit', 'Decoerência Térmica! A sua medição sofreu interferência e foi anulada neste turno.');
+      room.gameState.turn = opponentId;
+      room.gameState.activeCard = null;
+      io.to(socket.roomCode).emit('turnChanged', { nextTurn: room.gameState.turn });
+      return;
+    }
+
     const hitLive = (data.targetLive.x === opponentPos.live.x && data.targetLive.y === opponentPos.live.y);
     const hitDead = (data.targetDead.x === opponentPos.dead.x && data.targetDead.y === opponentPos.dead.y);
 
@@ -100,6 +110,7 @@ io.on('connection', (socket) => {
       socket.emit('observeResult', { hitLive, hitDead, targetLive: data.targetLive, targetDead: data.targetDead });
       
       room.gameState.turn = opponentId;
+      room.gameState.activeCard = null;
       io.to(socket.roomCode).emit('turnChanged', { nextTurn: room.gameState.turn });
     }
   });
