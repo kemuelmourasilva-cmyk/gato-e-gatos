@@ -5,9 +5,7 @@ const path = require('path');
 
 const app = express();
 const server = http.createServer(app);
-const io = new Server(server, {
-  cors: { origin: "*" }
-});
+const io = new Server(server, { cors: { origin: "*" } });
 
 app.use(express.static(path.join(__dirname, 'public')));
 
@@ -23,29 +21,15 @@ const quantumCards = [
 ];
 
 io.on('connection', (socket) => {
-  console.log(`Usuário conectado: ${socket.id}`);
-
   socket.on('createRoom', (roomCode) => {
-    if (rooms[roomCode]) {
-      socket.emit('errorMsg', 'Esta sala já existe.');
-      return;
-    }
-    rooms[roomCode] = {
-      players: {},
-      gameState: { boardSize: 5, positions: {}, turn: null, activeCard: null }
-    };
+    if (rooms[roomCode]) return socket.emit('errorMsg', 'Esta sala já existe.');
+    rooms[roomCode] = { players: {}, gameState: { boardSize: 5, positions: {}, turn: null } };
     joinRoom(socket, roomCode);
   });
 
   socket.on('joinRoom', (roomCode) => {
-    if (!rooms[roomCode]) {
-      socket.emit('errorMsg', 'Sala não encontrada.');
-      return;
-    }
-    if (Object.keys(rooms[roomCode].players).length >= 2) {
-      socket.emit('errorMsg', 'Sala cheia.');
-      return;
-    }
+    if (!rooms[roomCode]) return socket.emit('errorMsg', 'Sala não encontrada.');
+    if (Object.keys(rooms[roomCode].players).length >= 2) return socket.emit('errorMsg', 'Sala cheia.');
     joinRoom(socket, roomCode);
   });
 
@@ -55,17 +39,16 @@ io.on('connection', (socket) => {
     const room = rooms[roomCode];
     const playerNumber = Object.keys(room.players).length === 0 ? 1 : 2;
     room.players[socket.id] = { id: socket.id, number: playerNumber, ready: false };
-    
+
     socket.emit('init', { playerNumber, boardSize: room.gameState.boardSize, roomCode });
 
     if (Object.keys(room.players).length === 2) {
-      io.to(roomCode).emit('status', 'Ambos conectados! Posicionem seus gatos antes de iniciar as medições.');
+      io.to(roomCode).emit('status', 'Ambos conectados! Posicionem seus gatos no tabuleiro.');
     } else {
-      socket.emit('status', 'Aguardando o segundo jogador...');
+      socket.emit('status', 'Aguardando o segundo jogador entrar na sala...');
     }
   }
 
-  // Trava o jogo até ambos posicionarem
   socket.on('setInitialPositions', (data) => {
     const room = rooms[socket.roomCode];
     if (!room) return;
@@ -78,7 +61,7 @@ io.on('connection', (socket) => {
       room.gameState.turn = p1Socket;
       io.to(socket.roomCode).emit('gameStart', { activeTurn: room.gameState.turn });
     } else {
-      socket.emit('status', 'Posições salvas! Aguardando o oponente terminar de posicionar...');
+      socket.emit('status', 'Posições salvas! Aguardando o oponente...');
     }
   });
 
@@ -88,10 +71,9 @@ io.on('connection', (socket) => {
 
     const diceRoll = Math.floor(Math.random() * 6) + 1;
     const drawnCard = quantumCards[diceRoll - 1];
-    room.gameState.activeCard = drawnCard;
 
     socket.emit('diceResult', { diceRoll, card: drawnCard });
-    io.to(socket.roomCode).emit('status', `Jogador ${room.players[socket.id].number} rolou o dado quântico (🎲 ${diceRoll}) -> Carta: [${drawnCard.name}]`);
+    io.to(socket.roomCode).emit('status', `Jogador ${room.players[socket.id].number} rolou o dado quântico (🎲 ${diceRoll}) -> [${drawnCard.name}]`);
   });
 
   socket.on('makeMove', (data) => {
@@ -100,17 +82,11 @@ io.on('connection', (socket) => {
 
     room.gameState.positions[socket.id].live = data.newLive;
     room.gameState.positions[socket.id].dead = data.newDead;
-
-    const playerIds = Object.keys(room.players);
-    room.gameState.turn = playerIds.find(id => id !== socket.id);
-    room.gameState.activeCard = null;
-
-    io.to(socket.roomCode).emit('updateBoard', { nextTurn: room.gameState.turn });
   });
 
   socket.on('observe', (data) => {
     const room = rooms[socket.roomCode];
-    if (!room) return;
+    if (!room || room.gameState.turn !== socket.id) return;
 
     const opponentId = Object.keys(room.players).find(id => id !== socket.id);
     const opponentPos = room.gameState.positions[opponentId];
@@ -119,9 +95,11 @@ io.on('connection', (socket) => {
     const hitDead = (data.targetDead.x === opponentPos.dead.x && data.targetDead.y === opponentPos.dead.y);
 
     if (hitLive && hitDead) {
-      io.to(room.roomCode || socket.roomCode).emit('gameOver', { winner: room.players[socket.id].number });
+      io.to(socket.roomCode).emit('gameOver', { winner: room.players[socket.id].number });
     } else {
-      socket.emit('observeResult', { hitLive, hitDead });
+      socket.emit('observeResult', { hitLive, hitDead, targetLive: data.targetLive, targetDead: data.targetDead });
+      
+      // Passa o turno para o oponente
       room.gameState.turn = opponentId;
       io.to(socket.roomCode).emit('turnChanged', { nextTurn: room.gameState.turn });
     }
