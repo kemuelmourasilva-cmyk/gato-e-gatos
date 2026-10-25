@@ -8,17 +8,12 @@
   <style>
     body {
       font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-      background-color: #0d1117;
-      color: #c9d1d9;
-      text-align: center;
-      margin: 0;
-      padding: 20px;
+      background-color: #0d1117; color: #c9d1d9; text-align: center; margin: 0; padding: 20px;
     }
     h1 { color: #58a6ff; margin-bottom: 5px; }
     h3 { color: #8b949e; margin-top: 0; font-weight: normal; }
     #lobby {
-      background: #161b22; border: 1px solid #30363d;
-      padding: 30px; border-radius: 12px; display: inline-block; margin-top: 50px;
+      background: #161b22; border: 1px solid #30363d; padding: 30px; border-radius: 12px; display: inline-block; margin-top: 50px;
     }
     input { padding: 10px; font-size: 1rem; border-radius: 6px; border: 1px solid #30363d; background: #0d1117; color: white; margin-right: 10px; }
     #game-area { display: none; }
@@ -26,7 +21,6 @@
       background: #161b22; border: 1px solid #30363d; padding: 12px;
       border-radius: 8px; display: inline-block; margin-bottom: 15px; font-weight: bold; color: #79c0ff;
     }
-    /* Painel Quântico (Dado e Carta) */
     .quantum-panel {
       background: #1f242c; border: 2px dashed #8957e5; border-radius: 10px;
       padding: 15px; max-width: 500px; margin: 0 auto 20px auto; display: none;
@@ -39,7 +33,8 @@
     .board-box { background: #161b22; border: 2px solid #30363d; border-radius: 12px; padding: 12px; }
     .board-box.live { border-color: #2ea043; }
     .board-box.dead { border-color: #da3633; }
-    .board-box.enemy { border-color: #d29922; }
+    .board-box.enemy { border-color: #d29922; opacity: 0.5; pointer-events: none; } /* Bloqueado inicialmente */
+    .board-box.enemy.active { opacity: 1; pointer-events: auto; }
     .board-title { font-size: 1rem; margin-bottom: 8px; font-weight: bold; }
     .grid { display: grid; grid-template-columns: repeat(5, 40px); grid-template-rows: repeat(5, 40px); gap: 3px; }
     .cell {
@@ -73,11 +68,10 @@
   <div id="game-area">
     <div id="status-bar">Aguardando...</div>
 
-    <!-- Painel do Dado Quântico e Carta Sorteada -->
     <div id="quantum-panel" class="quantum-panel">
       <h3>⚛️ Turno Probabilístico ⚛️</h3>
       <button id="btn-dice" onclick="rollDice()">🎲 Rolar Dado Quântico</button>
-      <div id="card-display" class="card-display" style="display:none;">
+      <div id="card-display" style="display:none;">
         <div id="card-content" class="card-box"></div>
       </div>
     </div>
@@ -91,11 +85,12 @@
         <div class="board-title" style="color: #f85149;">Seu Gato Morto (|Φ⟩)</div>
         <div id="grid-dead" class="grid"></div>
       </div>
-      <div class="board-box enemy">
+      <!-- Tabuleiros de ataque inicialmente bloqueados até o posicionamento e jogada -->
+      <div id="box-enemy-live" class="board-box enemy">
         <div class="board-title" style="color: #d29922;">Alvo: Vivo Inimigo</div>
         <div id="grid-enemy-live" class="grid"></div>
       </div>
-      <div class="board-box enemy">
+      <div id="box-enemy-dead" class="board-box enemy">
         <div class="board-title" style="color: #d29922;">Alvo: Morto Inimigo</div>
         <div id="grid-enemy-dead" class="grid"></div>
       </div>
@@ -138,7 +133,7 @@
       myPlayerNumber = d.playerNumber;
       document.getElementById('lobby').style.display = 'none';
       document.getElementById('game-area').style.display = 'block';
-      setStatus(`Sala conectada! Jogador ${myPlayerNumber}. Posicione os gatos.`);
+      setStatus(`Sala conectada! Jogador ${myPlayerNumber}. Posicione seus gatos.`);
       buildAllGrids();
     });
 
@@ -178,7 +173,12 @@
           myDeadCat = { x: newDeadX, y: newDeadY };
           renderMyBoards();
           socket.emit('makeMove', { newLive: myLiveCat, newDead: myDeadCat });
-          setStatus('Movimento realizado! Selecione os alvos no tabuleiro inimigo e clique em Disparar.');
+          
+          // Libera tabuleiros inimigos para ataque após o movimento
+          document.getElementById('box-enemy-live').classList.add('active');
+          document.getElementById('box-enemy-dead').classList.add('active');
+          
+          setStatus('Movimento realizado! Selecione os alvos no tabuleiro inimigo e clique em Disparar Medição.');
           document.getElementById('btn-shoot').style.display = 'inline-block';
           document.getElementById('btn-shoot').disabled = false;
           document.getElementById('quantum-panel').style.display = 'none';
@@ -186,7 +186,7 @@
           alert('Movimento espelho inválido fora do tabuleiro!');
         }
       } else if (isMyTurn && !hasRolledDice) {
-        alert('Você precisa rolar o Dado Quântico primeiro antes de mover!');
+        alert('Role o Dado Quântico primeiro!');
       }
     }
 
@@ -205,8 +205,8 @@
     socket.on('diceResult', (data) => {
       hasRolledDice = true;
       document.getElementById('card-display').style.display = 'block';
-      document.getElementById('card-content').innerHTML = `<strong>🎲 Resultado: ${data.diceRoll}</strong><br><strong>Carta: ${data.card.name}</strong><br>${data.card.desc}`;
-      setStatus(`Carta ativada! Agora mova seu gato no tabuleiro.`);
+      document.getElementById('card-content').innerHTML = `<strong>🎲 Dado: ${data.diceRoll}</strong><br><strong>Carta: ${data.card.name}</strong><br>${data.card.desc}`;
+      setStatus(`Carta ativa! Mova seu gato no tabuleiro.`);
     });
 
     function renderMyBoards() {
@@ -232,16 +232,21 @@
     }
 
     function confirmSetup() {
-      if (!myLiveCat || !myDeadCat) { alert('Posicione os dois gatos!'); return; }
+      if (!myLiveCat || !myDeadCat) { alert('Posicione o Gato Vivo e o Gato Morto!'); return; }
       socket.emit('setInitialPositions', { live: myLiveCat, dead: myDeadCat });
       document.getElementById('btn-confirm').disabled = true;
-      setStatus('Posições prontas. Aguardando oponente...');
+      setStatus('Posições confirmadas. Aguardando o oponente posicionar...');
     }
 
     function submitObservation() {
-      if (!guessLiveTarget || !guessDeadTarget) { alert('Selecione alvos nos tabuleiros inimigos!'); return; }
+      if (!guessLiveTarget || !guessDeadTarget) { alert('Selecione os alvos nos tabuleiros inimigos!'); return; }
       socket.emit('observe', { targetLive: guessLiveTarget, targetDead: guessDeadTarget });
       document.getElementById('btn-shoot').style.display = 'none';
+      
+      // Bloqueia novamente os tabuleiros inimigos após o tiro
+      document.getElementById('box-enemy-live').classList.remove('active');
+      document.getElementById('box-enemy-dead').classList.remove('active');
+      
       guessLiveTarget = null; guessDeadTarget = null;
       renderEnemyGuesses();
     }
@@ -255,12 +260,12 @@
       isMyTurn = (d.activeTurn === socket.id);
       hasRolledDice = false;
       if (isMyTurn) {
-        setStatus('Seu turno! Role o Dado Quântico.');
+        setStatus('Partida Iniciada! Seu turno: Role o Dado Quântico.');
         document.getElementById('quantum-panel').style.display = 'block';
         document.getElementById('btn-dice').disabled = false;
         document.getElementById('card-display').style.display = 'none';
       } else {
-        setStatus("Vez do oponente...");
+        setStatus("Partida Iniciada! Vez do oponente...");
         document.getElementById('quantum-panel').style.display = 'none';
       }
     });
