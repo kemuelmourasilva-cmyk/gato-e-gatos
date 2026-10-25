@@ -50,7 +50,6 @@
     button:hover { background: #2ea043; }
     button:disabled { background: #30363d; cursor: not-allowed; }
 
-    /* Modal / Pop-up Quântico */
     .modal-overlay {
       position: fixed; top: 0; left: 0; width: 100%; height: 100%;
       background: rgba(0,0,0,0.8); display: none; align-items: center; justify-content: center; z-index: 100;
@@ -77,7 +76,6 @@
   <div id="game-area">
     <div id="status-bar">Aguardando...</div>
 
-    <!-- Histórico / Log de Laboratório Quântico -->
     <div id="log-box" style="background: #010409; border: 1px solid #30363d; border-radius: 8px; padding: 10px; max-width: 600px; height: 90px; margin: 0 auto 15px auto; overflow-y: auto; text-align: left; font-family: monospace; font-size: 0.85rem; color: #8b949e;">
       <div>[Sistema] Laboratório Quântico inicializado. Aguardando eventos...</div>
     </div>
@@ -115,7 +113,6 @@
     </div>
   </div>
 
-  <!-- Pop-up Quântico -->
   <div id="popup-modal" class="modal-overlay">
     <div class="modal-content">
       <h2 id="modal-title">Resultado da Medição</h2>
@@ -132,6 +129,7 @@
     let isMyTurn = false;
     let gameStage = 'SETUP';
     let hasRolledDice = false;
+    let currentCardId = null;
 
     let myLiveCat = null;
     let myDeadCat = null;
@@ -142,7 +140,6 @@
     let enemyLiveHistory = Array(25).fill(null);
     let enemyDeadHistory = Array(25).fill(null);
 
-    // --- FUNÇÕES DE LOG E SONS ---
     function addLog(message) {
       const logBox = document.getElementById('log-box');
       const timestamp = new Date().toLocaleTimeString();
@@ -227,32 +224,65 @@
         if (type === 'live') myLiveCat = { x, y };
         if (type === 'dead') myDeadCat = { x, y };
         renderMyBoards();
-      } else if (gameStage === 'PLAYING' && isMyTurn && hasRolledDice && type === 'live') {
-        const dx = x - myLiveCat.x;
-        const dy = y - myLiveCat.y;
-        const newDeadX = myDeadCat.x - dx;
-        const newDeadY = myDeadCat.y - dy;
-
-        if (newDeadX >= 0 && newDeadX < BOARD_SIZE && newDeadY >= 0 && newDeadY < BOARD_SIZE) {
-          myLiveCat = { x, y };
-          myDeadCat = { x: newDeadX, y: newDeadY };
-          renderMyBoards();
-          socket.emit('makeMove', { newLive: myLiveCat, newDead: myDeadCat });
-          addLog(`Movimento espelho executado. Gato Vivo em (${x},${y}).`);
-          
-          document.getElementById('box-enemy-live').classList.add('active');
-          document.getElementById('box-enemy-dead').classList.add('active');
-          
-          setStatus('Movimento realizado! Escolha os alvos no tabuleiro inimigo e clique em Disparar.');
-          document.getElementById('btn-shoot').style.display = 'inline-block';
-          document.getElementById('btn-shoot').disabled = false;
-          document.getElementById('quantum-panel').style.display = 'none';
-        } else {
-          alert('Movimento espelho inválido fora do tabuleiro!');
+      } else if (gameStage === 'PLAYING' && isMyTurn && hasRolledDice) {
+        
+        if (currentCardId === 4) {
+          if (type === 'live') myLiveCat = { x, y };
+          if (type === 'dead') myDeadCat = { x, y };
+          finishTurnAfterMove(`Superposição ativada! Gato ${type} reposicionado para (${x},${y}).`);
+          return;
         }
+
+        if (currentCardId === 1 && type === 'live') {
+          const dx = x - myLiveCat.x;
+          const dy = y - myLiveCat.y;
+          const newDeadX = myDeadCat.x - dx;
+          const newDeadY = myDeadCat.y - dy;
+
+          if (newDeadX >= 0 && newDeadX < BOARD_SIZE && newDeadY >= 0 && newDeadY < BOARD_SIZE) {
+            myLiveCat = { x, y };
+            myDeadCat = { x: newDeadX, y: newDeadY };
+            finishTurnAfterMove(`Efeito Túnel ativado! Salto quântico para (${x},${y}).`);
+          } else {
+            alert('Túnel inválido! O gato morto sairia dos limites do tabuleiro.');
+          }
+          return;
+        }
+
+        if (type === 'live') {
+          const dx = x - myLiveCat.x;
+          const dy = y - myLiveCat.y;
+          const newDeadX = myDeadCat.x - dx;
+          const newDeadY = myDeadCat.y - dy;
+
+          if (newDeadX >= 0 && newDeadX < BOARD_SIZE && newDeadY >= 0 && newDeadY < BOARD_SIZE) {
+            myLiveCat = { x, y };
+            myDeadCat = { x: newDeadX, y: newDeadY };
+            finishTurnAfterMove(`Movimento espelho executado. Gato Vivo em (${x},${y}).`);
+          } else {
+            alert('Movimento espelho inválido fora do tabuleiro!');
+          }
+        } else {
+          alert('No movimento padrão, clique no seu tabuleiro do Gato Vivo para mover ambos!');
+        }
+
       } else if (isMyTurn && !hasRolledDice) {
         alert('Role o Dado Quântico primeiro!');
       }
+    }
+
+    function finishTurnAfterMove(logMsg) {
+      renderMyBoards();
+      socket.emit('makeMove', { newLive: myLiveCat, newDead: myDeadCat });
+      addLog(logMsg);
+      
+      document.getElementById('box-enemy-live').classList.add('active');
+      document.getElementById('box-enemy-dead').classList.add('active');
+      
+      setStatus('Movimento realizado! Escolha os alvos no tabuleiro inimigo e clique em Disparar.');
+      document.getElementById('btn-shoot').style.display = 'inline-block';
+      document.getElementById('btn-shoot').disabled = false;
+      document.getElementById('quantum-panel').style.display = 'none';
     }
 
     function handleEnemyGridClick(type, x, y) {
@@ -269,6 +299,7 @@
 
     socket.on('diceResult', (data) => {
       hasRolledDice = true;
+      currentCardId = data.card.id;
       playSound('dice');
       addLog(`Dado Quântico rolado: 🎲 ${data.diceRoll} | Carta: ${data.card.name}`);
       
@@ -347,6 +378,7 @@
     function updateTurnState(activeTurnId) {
       isMyTurn = (activeTurnId === socket.id);
       hasRolledDice = false;
+      currentCardId = null;
       guessLiveTarget = null;
       guessDeadTarget = null;
       renderEnemyGridState();
@@ -373,29 +405,30 @@
       enemyDeadHistory[idxDead] = d.hitDead ? 'HIT' : 'MISS';
       renderEnemyGridState();
 
-      if (d.hitLive || d.hitDead) {
-        playSound('hit');
-        addLog('Resultado da Medição: ACERTOU pelo menos um alvo!');
-      } else {
-        playSound('miss');
-        addLog('Resultado da Medição: Errado (vazio nas posições).');
-      }
+      playSound('miss');
+      addLog(`Medição parcial: Vivo (${d.hitLive ? '🎯 ACERTOU' : '❌ ERROU'}) | Morto (${d.hitDead ? '🎯 ACERTOU' : '❌ ERROU'})`);
 
       showModal(
-        '⚛️ Resultado da Medição Quântica',
-        `A medição colapsou!<br><br>
+        '⚛️ Resultado da Medição Parcial',
+        `A medição foi efetuada, mas o sistema continua em superposição!<br><br>
         • Gato Vivo: ${d.hitLive ? '🎯 ATINGIDO!' : '❌ Ausente (Vazio)'}<br>
         • Gato Morto: ${d.hitDead ? '🎯 ATINGIDO!' : '❌ Ausente (Vazio)'}`
       );
     });
 
+    socket.on('decoherenceHit', (msg) => {
+      playSound('miss');
+      addLog('Decoerência Térmica ativada: Tentativa de medição anulada.');
+      showModal('⚠️ Decoerência Térmica', msg);
+    });
+
     socket.on('gameOver', (d) => {
       if (d.winner === myPlayerNumber) {
-        showModal('🎉 COLAPSO DA EQUAÇÃO!', 'Parabéns! Você colapsou a função de onda com sucesso e determinou o estado exato dos dois gatos do oponente!');
+        showModal('🎉 COLAPSO TOTAL DA EQUAÇÃO!', 'Parabéns! Você encontrou os dois gatos do oponente e colapsou a função de onda!');
         setStatus('Você Venceu!');
-        addLog('Fim de jogo: Vitória quântica!');
+        addLog('Fim de jogo: Vitória Quântica Total!');
       } else {
-        showModal('💀 COLAPSO DA EQUAÇÃO!', 'O oponente colapsou a sua função de onda primeiro e encontrou seus dois gatos!');
+        showModal('💀 COLAPSO TOTAL DA EQUAÇÃO!', 'O oponente encontrou seus dois gatos e venceu a partida!');
         setStatus('Você Perdeu!');
         addLog('Fim de jogo: Derrota.');
       }
