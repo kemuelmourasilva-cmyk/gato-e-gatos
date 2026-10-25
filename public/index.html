@@ -6,7 +6,6 @@
   <title>Gatos e Gatos: Vivo ou Morto, És a Questão!</title>
   <script src="/socket.io/socket.io.js"></script>
   <style>
-    /* Fundo Animado e Estética de Supercomputador Quântico */
     body {
       font-family: 'Courier New', Courier, monospace;
       background-color: #030712;
@@ -18,7 +17,6 @@
       position: relative;
     }
 
-    /* Animação de Fundo (Partículas Quânticas / Linhas de Fluxo) */
     body::before {
       content: "";
       position: fixed;
@@ -70,7 +68,6 @@
       letter-spacing: 1px;
     }
 
-    /* Estilo Supercomputador / Terminal Avançado */
     #log-box {
       background: #000000;
       border: 1px solid #22c55e;
@@ -85,16 +82,6 @@
       font-family: 'Courier New', Courier, monospace;
       font-size: 0.85rem;
       color: #4ade80;
-    }
-
-    #log-box::after {
-      content: "_";
-      animation: blink 1s infinite;
-    }
-
-    @keyframes blink {
-      0%, 100% { opacity: 1; }
-      50% { opacity: 0; }
     }
 
     .quantum-panel {
@@ -148,6 +135,7 @@
     .cell.guess-dead { background: #7e22ce; border-color: #a855f7; }
     .cell.missed { background: #0f172a; color: #f87171; font-weight: bold; border-color: #7f1d1d; }
     .cell.hit { background: #14532d; color: #4ade80; font-weight: bold; border-color: #166534; }
+    .cell.blocked { background: #1e1b4b; color: #475569; cursor: not-allowed; border-color: #312e81; }
 
     .controls { margin-top: 25px; display: flex; justify-content: center; gap: 15px; }
     
@@ -155,9 +143,8 @@
       background: #16a34a; color: white; border: none; padding: 12px 24px;
       font-size: 1rem; border-radius: 6px; cursor: pointer; font-family: monospace; font-weight: bold;
       box-shadow: 0 0 10px rgba(22, 163, 74, 0.4);
-      transition: all 0.2s;
     }
-    button:hover { background: #22c55e; box-shadow: 0 0 15px rgba(34, 197, 94, 0.6); transform: translateY(-1px); }
+    button:hover { background: #22c55e; box-shadow: 0 0 15px rgba(34, 197, 94, 0.6); }
     button:disabled { background: #334155; color: #64748b; cursor: not-allowed; box-shadow: none; }
 
     .modal-overlay {
@@ -174,8 +161,8 @@
 </head>
 <body>
 
-  <h1>⚡ QUANTUM_CAT_LAB // v2.0 ⚡</h1>
-  <h3>Sistema de Superposição & Mapeamento Probabilístico</h3>
+  <h1>⚡ QUANTUM_CAT_LAB // v3.0 ⚡</h1>
+  <h3>Sistema de Pontuação & Interferência de Campo</h3>
 
   <div id="lobby">
     <h2>[ CONECTAR_AO_TERMINAL ]</h2>
@@ -188,9 +175,8 @@
   <div id="game-area">
     <div id="status-bar">[SISTEMA PRONTO] Aguardando diretrizes...</div>
 
-    <!-- Terminal Quântico Estilo Supercomputador -->
     <div id="log-box">
-      <div>[SYS_CORE] Núcleo Quântico inicializado com sucesso. Canal seguro aberto.</div>
+      <div>[SYS_CORE] Núcleo Quântico inicializado com pontuação alvo = 3 pontos.</div>
     </div>
 
     <div id="quantum-panel" class="quantum-panel">
@@ -203,11 +189,11 @@
 
     <div class="boards-container">
       <div class="board-box live">
-        <div class="board-title" style="color: #4ade80;">SEU GATO VIVO (|Ψ⟩)</div>
+        <div class="board-title" style="color: #4ade80;">SEU Gato Vivo (|Ψ⟩)</div>
         <div id="grid-live" class="grid"></div>
       </div>
       <div class="board-box dead">
-        <div class="board-title" style="color: #f87171;">SEU GATO MORTO (|Φ⟩)</div>
+        <div class="board-title" style="color: #f87171;">SEU Gato Morto (|Φ⟩)</div>
         <div id="grid-dead" class="grid"></div>
       </div>
       <div id="box-enemy-live" class="board-box enemy">
@@ -400,6 +386,15 @@
 
     function handleEnemyGridClick(type, x, y) {
       if (gameStage !== 'PLAYING' || !isMyTurn) return;
+      const idx = y * BOARD_SIZE + x;
+      const historyArr = type === 'live' ? enemyLiveHistory : enemyDeadHistory;
+
+      // Impede clique se a casa estiver bloqueada por '❌' (MISS)
+      if (historyArr[idx] === 'MISS') {
+        alert('Esta coordenada está BLOQUEADA por interferência (❌) do turno anterior!');
+        return;
+      }
+
       if (type === 'live') guessLiveTarget = { x, y };
       if (type === 'dead') guessDeadTarget = { x, y };
       renderEnemyGridState();
@@ -437,11 +432,14 @@
       const ged = document.getElementById('grid-enemy-dead');
 
       for(let i=0; i<25; i++) {
-        gel.children[i].className = 'cell' + (enemyLiveHistory[i] === 'MISS' ? ' missed' : enemyLiveHistory[i] === 'HIT' ? ' hit' : '');
-        gel.children[i].innerHTML = enemyLiveHistory[i] === 'MISS' ? '❌' : enemyLiveHistory[i] === 'HIT' ? '🎯' : '';
+        const liveStatus = enemyLiveHistory[i];
+        const deadStatus = enemyDeadHistory[i];
 
-        ged.children[i].className = 'cell' + (enemyDeadHistory[i] === 'MISS' ? ' missed' : enemyDeadHistory[i] === 'HIT' ? ' hit' : '');
-        ged.children[i].innerHTML = enemyDeadHistory[i] === 'MISS' ? '❌' : enemyDeadHistory[i] === 'HIT' ? '🎯' : '';
+        gel.children[i].className = 'cell' + (liveStatus === 'MISS' ? ' missed blocked' : liveStatus === 'HIT' ? ' hit' : '');
+        gel.children[i].innerHTML = liveStatus === 'MISS' ? '❌' : liveStatus === 'HIT' ? '🎯' : '';
+
+        ged.children[i].className = 'cell' + (deadStatus === 'MISS' ? ' missed blocked' : deadStatus === 'HIT' ? ' hit' : '');
+        ged.children[i].innerHTML = deadStatus === 'MISS' ? '❌' : deadStatus === 'HIT' ? '🎯' : '';
       }
 
       if (guessLiveTarget) {
@@ -524,13 +522,13 @@
         playSound('miss');
       }
 
-      addLog(`Varredura parcial: Vivo (${d.hitLive ? '🎯 ALVO' : '❌ VAZIO'}) | Morto (${d.hitDead ? '🎯 ALVO' : '❌ VAZIO'})`);
+      addLog(`Pontuação atual: ${d.score}/3 pts | Vivo (${d.hitLive ? '🎯 ALVO' : '❌ VAZIO'}) | Morto (${d.hitDead ? '🎯 ALVO' : '❌ VAZIO'})`);
 
       showModal(
         '⚛️ RELATÓRIO DE VARREDURA',
-        `Medição executada, estado em superposição mantido.<br><br>
-        • Gato Vivo: ${d.hitLive ? '🎯 IMPACTO NO ALVO!' : '❌ Vazio'}<br>
-        • Gato Morto: ${d.hitDead ? '🎯 IMPACTO NO ALVO!' : '❌ Vazio'}`
+        `Medição executada. Pontuação atual: <strong>${d.score} / 3 pts</strong><br><br>
+        • Gato Vivo: ${d.hitLive ? '🎯 IMPACTO NO ALVO! (+1 pt)' : '❌ Vazio (Bloqueado)'}<br>
+        • Gato Morto: ${d.hitDead ? '🎯 IMPACTO NO ALVO! (+1 pt)' : '❌ Vazio (Bloqueado)'}`
       );
     });
 
@@ -542,11 +540,11 @@
 
     socket.on('gameOver', (d) => {
       if (d.winner === myPlayerNumber) {
-        showModal('🎉 COLAPSO TOTAL DA EQUAÇÃO!', 'Parabéns! Função de onda colapsada com sucesso. Você localizou ambos os alvos!');
+        showModal('🎉 COLAPSO DA EQUAÇÃO!', `Vitória! Condição de vitória atingida (${d.type === 'BOTH' ? 'Colapso total de ambos os gatos' : 'Pontuação máxima de 3 pontos alçada'}).`);
         setStatus('SISTEMA VITORIOSO');
         addLog('Fim de simulação: Vitória total.');
       } else {
-        showModal('💀 COLAPSO TOTAL DA EQUAÇÃO!', 'O oponente colapsou sua função de onda primeiro. Suas unidades foram detectadas.');
+        showModal('💀 COLAPSO DA EQUAÇÃO!', 'O oponente atingiu a condição de vitória primeiro.');
         setStatus('SISTEMA DERROTADO');
         addLog('Fim de simulação: Derrota.');
       }
