@@ -11,92 +11,130 @@ const io = new Server(server, {
 
 app.use(express.static(path.join(__dirname, 'public')));
 
-let players = {};
-let gameState = {
-  boardSize: 5, // Tabuleiro 5x5 por padrão
-  positions: {}, // { socketId: { live: {x,y}, dead: {x,y}, ready: bool } }
-  turn: null
-};
+let rooms = {}; // { roomCode: { players: {}, gameState: {} } }
 
 io.on('connection', (socket) => {
-  console.log(`Jogador conectado: ${socket.id}`);
+  console.log(`Usuário conectado: ${socket.id}`);
 
-  if (Object.keys(players).length < 2) {
-    const playerNumber = Object.keys(players).length === 0 ? 1 : 2;
-    players[socket.id] = { id: socket.id, number: playerNumber, ready: false };
-    socket.emit('init', { playerNumber, boardSize: gameState.boardSize });
-    
-    if (Object.keys(players).length === 2) {
-      io.emit('status', 'Aguardando ambos os jogadores posicionarem os gatos...');
-    } else {
-      socket.emit('status', 'Aguardando o Jogador 2 entrar...');
+  // Criar uma nova sala com código
+  socket.on('createRoom', (roomCode) => {
+    if (rooms[roomCode]) {
+      socket.emit('errorMsg', 'Esta sala já existe. Escolha outro código.');
+      return;
     }
-  } else {
-    socket.emit('errorMsg', 'A sala já está cheia (máximo 2 jogadores).');
-    return;
+
+    rooms[roomCode] = {
+      players: {},
+      gameState: {
+        boardSize: 5,
+        positions: {},
+        turn: null
+      }
+    };
+
+    joinRoom(socket, roomCode);
+  });
+
+  // Entrar em uma sala existente
+  socket.on('joinRoom', (roomCode) => {
+    if (!rooms[roomCode]) {
+      socket.emit('errorMsg', 'Sala não encontrada. Verifique o código.');
+      return;
+    }
+
+    if (Object.keys(rooms[roomCode].players).length >= 2) {
+      socket.emit('errorMsg', 'A sala já está cheia.');
+      return;
+    }
+
+    joinRoom(socket, roomCode);
+  });
+
+  function joinRoom(socket, roomCode) {
+    socket.roomCode = roomCode;
+    socket.join(roomCode);
+
+    const room = rooms[roomCode];
+    const playerNumber = Object.keys(room.players).length === 0 ? 1 : 2;
+
+    room.players[socket.id] = { id: socket.id, number: playerNumber, ready: false };
+    
+    socket.emit('init', { playerNumber, boardSize: room.gameState.boardSize, roomCode });
+
+    if (Object.keys(room.players).length === 2) {
+      io.to(roomCode).emit('status', 'Ambos conectados! Posicionem seus gatos (Vivo e Morto).');
+    } else {
+      socket.emit('status', 'Aguardando o segundo jogador entrar na sala...');
+    }
   }
 
-  // Define a posição inicial secreta dos gatos
+  // Posicionamento inicial
   socket.on('setInitialPositions', (data) => {
-    gameState.positions[socket.id] = {
+    const room = rooms[socket.roomCode];
+    if (!room) return;
+
+    room.gameState.positions[socket.id] = {
       live: data.live,
       dead: data.dead
     };
-    players[socket.id].ready = true;
+    room.players[socket.id].ready = true;
 
-    const allReady = Object.values(players).every(p => p.ready);
-    if (allReady && Object.keys(players).length === 2) {
-      const p1Socket = Object.keys(players)[0];
-      gameState.turn = p1Socket;
-      io.emit('gameStart', { activeTurn: gameState.turn });
+    const allReady = Object.values(room.players).every(p => p.ready);
+    if (allReady && Object.keys(room.players).length === 2) {
+      const p1Socket = Object.keys(room.players)[0];
+      room.gameState.turn = p1Socket;
+      io.to(socket.roomCode).emit('gameStart', { activeTurn: room.gameState.turn });
     } else {
-      socket.emit('status', 'Posições salvas! Aguardando o oponente posicionar...');
+      socket.emit('status', 'Posições salvas! Aguardando o oponente...');
     }
   });
 
-  // Movimento Espelho / Emaranhado
+  // Movimento Espelho
   socket.on('makeMove', (data) => {
-    if (gameState.turn !== socket.id) return;
+    const room = rooms[socket.roomCode];
+    if (!room || room.gameState.turn !== socket.id) return;
 
-    // Atualiza a posição do jogador atual
-    gameState.positions[socket.id].live = data.newLive;
-    gameState.positions[socket.id].dead = data.newDead;
+    room.gameState.positions[socket.id].live = data.newLive;
+    room.gameState.positions[socket.id].dead = data.newDead;
 
-    // Alterna o turno
-    const playerIds = Object.keys(players);
-    gameState.turn = playerIds.find(id => id !== socket.id);
+    const playerIds = Object.keys(room.players);
+    room.gameState.turn = playerIds.find(id => id !== socket.id);
 
-    io.emit('updateBoard', {
-      lastPlayer: socket.id,
-      nextTurn: gameState.turn
+    io.to(socket.roomCode).emit('updateBoard', {
+      nextTurn: room.gameState.turn
     });
   });
 
-  // Ação de Observar / Adivinhar (Estilo Batalha Naval)
+  // Ação de Medição / Observação clicando no Tabuleiro do Oponente
   socket.on('observe', (data) => {
-    if (gameState.turn !== socket.id) return;
+    const room = rooms[socket.roomCode];
+    if (!room || room.gameState.turn !== socket.id) return;
 
-    const opponentId = Object.keys(players).find(id => id !== socket.id);
-    const opponentPos = gameState.positions[opponentId];
+    const opponentId = Object.keys(room.players).find(id => id !== socket.id);
+    const opponentPos = room.gameState.positions[opponentId];
 
     const hitLive = (data.targetLive.x === opponentPos.live.x && data.targetLive.y === opponentPos.live.y);
     const hitDead = (data.targetDead.x === opponentPos.dead.x && data.targetDead.y === opponentPos.dead.y);
 
     if (hitLive && hitDead) {
-      io.emit('gameOver', { winner: players[socket.id].number });
+      io.to(socket.roomCode).emit('gameOver', { winner: room.players[socket.id].number });
     } else {
-      // Alterna turno após tentativa falha
-      gameState.turn = opponentId;
-      socket.emit('observeResult', { hitLive, hitDead, success: false });
-      io.emit('turnChanged', { nextTurn: gameState.turn });
+      room.gameState.turn = opponentId;
+      socket.emit('observeResult', { hitLive, hitDead });
+      io.to(socket.roomCode).emit('turnChanged', { nextTurn: room.gameState.turn });
     }
   });
 
   socket.on('disconnect', () => {
-    console.log(`Jogador desconectado: ${socket.id}`);
-    delete players[socket.id];
-    delete gameState.positions[socket.id];
-    io.emit('playerLeft', 'O outro jogador se desconectou.');
+    const roomCode = socket.roomCode;
+    if (roomCode && rooms[roomCode]) {
+      delete rooms[roomCode].players[socket.id];
+      delete rooms[roomCode].gameState.positions[socket.id];
+      io.to(roomCode).emit('playerLeft', 'O oponente se desconectou da sala.');
+      if (Object.keys(rooms[roomCode].players).length === 0) {
+        delete rooms[roomCode];
+      }
+    }
   });
 });
 
