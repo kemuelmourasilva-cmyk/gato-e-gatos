@@ -130,16 +130,16 @@
     }
 
     .board-box.live { 
-      border-color: #22c55e; 
-      box-shadow: 0 15px 35px rgba(34, 197, 94, 0.25), inset 0 0 15px rgba(34, 197, 94, 0.1); 
+      border-color: #facc15; 
+      box-shadow: 0 15px 35px rgba(250, 204, 21, 0.25), inset 0 0 15px rgba(250, 204, 21, 0.1); 
     }
     .board-box.dead { 
-      border-color: #ef4444; 
-      box-shadow: 0 15px 35px rgba(239, 68, 68, 0.25), inset 0 0 15px rgba(239, 68, 68, 0.1); 
+      border-color: #f87171; 
+      box-shadow: 0 15px 35px rgba(248, 113, 113, 0.25), inset 0 0 15px rgba(248, 113, 113, 0.1); 
     }
     .board-box.enemy { 
-      border-color: #eab308; 
-      box-shadow: 0 15px 35px rgba(234, 179, 8, 0.25), inset 0 0 15px rgba(234, 179, 8, 0.1); 
+      border-color: #38bdf8; 
+      box-shadow: 0 15px 35px rgba(56, 189, 248, 0.25), inset 0 0 15px rgba(56, 189, 248, 0.1); 
     }
 
     .board-title { 
@@ -181,8 +181,22 @@
       transform: translateZ(15px) scale(1.05);
     }
 
-    .cell.cat-live { background: #15803d; border-color: #22c55e; box-shadow: 0 0 15px #22c55e; transform: translateZ(10px); }
-    .cell.cat-dead { background: #b91c1c; border-color: #ef4444; box-shadow: 0 0 15px #ef4444; transform: translateZ(10px); }
+    /* Gato Vivo: Preto com olhos amarelos marcantes */
+    .cell.cat-live { 
+      background: #050505; 
+      border-color: #facc15; 
+      box-shadow: 0 0 15px rgba(250, 204, 21, 0.7); 
+      transform: translateZ(12px); 
+    }
+
+    /* Gato Morto: Preto com traços esqueléticos brancos */
+    .cell.cat-dead { 
+      background: #000000; 
+      border-color: #f87171; 
+      box-shadow: 0 0 15px rgba(248, 113, 113, 0.5); 
+      transform: translateZ(12px); 
+    }
+
     .cell.guess-live { background: #1d4ed8; border-color: #3b82f6; box-shadow: 0 0 15px #3b82f6; transform: translateZ(10px); }
     .cell.guess-dead { background: #7e22ce; border-color: #a855f7; box-shadow: 0 0 15px #a855f7; transform: translateZ(10px); }
     .cell.missed { background: #0f172a; color: #f87171; font-weight: bold; border-color: #7f1d1d; }
@@ -217,7 +231,7 @@
   <canvas id="bg-canvas"></canvas>
 
   <h1>⚡ QUANTUM_CAT_LAB // v3.0 3D ⚡</h1>
-  <h3>Sistema de Pontuação & Matriz Holográfica</h3>
+  <h3>Gato Vivo (Preto/Olhos Dourados) & Gato Morto (Esquelético)</h3>
 
   <div id="lobby">
     <h2>[ CONECTAR_AO_TERMINAL ]</h2>
@@ -245,23 +259,23 @@
     <div class="perspective-container">
       <!-- FASE 1: SEUS TABULEIROS (VIVO & MORTO) -->
       <div id="box-my-live" class="board-box live">
-        <div class="board-title" style="color: #4ade80;">SEU GATO VIVO (|Ψ⟩)</div>
+        <div class="board-title" style="color: #facc15;">SEU GATO VIVO (|Ψ⟩) [PRETO/DOURADO]</div>
         <div id="grid-live" class="grid"></div>
       </div>
       
       <div id="box-my-dead" class="board-box dead">
-        <div class="board-title" style="color: #f87171;">SEU GATO MORTO (|Φ⟩)</div>
+        <div class="board-title" style="color: #f87171;">SEU GATO MORTO (|Φ⟩) [ESQUELÉTICO]</div>
         <div id="grid-dead" class="grid"></div>
       </div>
 
       <!-- FASE 2: TABULEIROS INIMIGOS (SÓ APARECEM NO DISPARO) -->
       <div id="box-enemy-live" class="board-box enemy" style="display: none;">
-        <div class="board-title" style="color: #facc15;">ALVO: VIVO INIMIGO</div>
+        <div class="board-title" style="color: #38bdf8;">ALVO: VIVO INIMIGO</div>
         <div id="grid-enemy-live" class="grid"></div>
       </div>
 
       <div id="box-enemy-dead" class="board-box enemy" style="display: none;">
-        <div class="board-title" style="color: #facc15;">ALVO: MORTO INIMIGO</div>
+        <div class="board-title" style="color: #38bdf8;">ALVO: MORTO INIMIGO</div>
         <div id="grid-enemy-dead" class="grid"></div>
       </div>
     </div>
@@ -487,7 +501,6 @@
       socket.emit('makeMove', { newLive: myLiveCat, newDead: myDeadCat });
       addLog(logMsg);
       
-      // MUDANÇA DE FASE VISUAL: Oculta seus tabuleiros e exibe os 2 tabuleiros inimigos para disparo
       showEnemyBoardsOnly();
       
       setStatus('Movimento computado! Selecione os alvos no setor inimigo e clique em Disparar.');
@@ -534,8 +547,14 @@
         gl.children[i].className = 'cell'; gl.children[i].innerHTML = '';
         gd.children[i].className = 'cell'; gd.children[i].innerHTML = '';
       }
-      if (myLiveCat) { gl.children[myLiveCat.y * BOARD_SIZE + myLiveCat.x].className = 'cell cat-live'; gl.children[myLiveCat.y * BOARD_SIZE + myLiveCat.x].innerHTML = '🐱'; }
-      if (myDeadCat) { gd.children[myDeadCat.y * BOARD_SIZE + myDeadCat.x].className = 'cell cat-dead'; gd.children[myDeadCat.y * BOARD_SIZE + myDeadCat.x].innerHTML = '💀'; }
+      if (myLiveCat) { 
+        gl.children[myLiveCat.y * BOARD_SIZE + myLiveCat.x].className = 'cell cat-live'; 
+        gl.children[myLiveCat.y * BOARD_SIZE + myLiveCat.x].innerHTML = '🐈‍⬛'; // Gato preto
+      }
+      if (myDeadCat) { 
+        gd.children[myDeadCat.y * BOARD_SIZE + myDeadCat.x].className = 'cell cat-dead'; 
+        gd.children[myDeadCat.y * BOARD_SIZE + myDeadCat.x].innerHTML = '💀'; // Caveira / Esqueleto estilizado
+      }
     }
 
     function renderEnemyGridState() {
@@ -602,7 +621,6 @@
       guessLiveTarget = null;
       guessDeadTarget = null;
       
-      // Sempre retorna para a visão dos seus tabuleiros no início do seu turno
       showMyBoardsOnly();
 
       if (isMyTurn) {
