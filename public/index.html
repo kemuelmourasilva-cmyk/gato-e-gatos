@@ -187,6 +187,19 @@
       transform: translateZ(15px) scale(1.05);
     }
 
+    /* CASAS ONDE O GATO PODE SER COLOCADO - BRILHO AZUL NEON */
+    .cell.valid-move {
+      border: 2px solid #38bdf8 !important;
+      box-shadow: 0 0 18px rgba(56, 189, 248, 0.9), inset 0 0 10px rgba(56, 189, 248, 0.5) !important;
+      background: rgba(14, 165, 233, 0.25) !important;
+      animation: pulseBlueGlow 1.5s infinite alternate ease-in-out;
+    }
+
+    @keyframes pulseBlueGlow {
+      0% { box-shadow: 0 0 10px rgba(56, 189, 248, 0.6), inset 0 0 5px rgba(56, 189, 248, 0.3); }
+      100% { box-shadow: 0 0 22px rgba(56, 189, 248, 1), inset 0 0 14px rgba(56, 189, 248, 0.7); }
+    }
+
     .cell canvas {
       position: absolute;
       top: 0; left: 0;
@@ -322,7 +335,7 @@
   <canvas id="bg-canvas"></canvas>
 
   <h1>⚡ QUANTUM_CAT_LAB // v3.0 3D REAL ⚡</h1>
-  <h3>Modelos 3D Procedurais WebGL: Gato Preto (Olhos Dourados) & Gato Esquelético</h3>
+  <h3>Modelos 3D Procedurais WebGL: Gato Preto & Gato Esquelético</h3>
 
   <div id="lobby">
     <h2>[ CONECTAR_AO_TERMINAL ]</h2>
@@ -734,6 +747,56 @@
       }
     }
 
+    /* DESTAQUE DE BORDAS AZUL NEON NAS CASAS VÁLIDAS */
+    function highlightValidMoves() {
+      const gl = document.getElementById('grid-live');
+      
+      // Limpa destaques anteriores
+      for (let i = 0; i < 25; i++) {
+        gl.children[i].classList.remove('valid-move');
+      }
+
+      if (!isMyTurn || !hasRolledDice || !myLiveCat || !myDeadCat) return;
+
+      for (let r = 0; r < BOARD_SIZE; r++) {
+        for (let c = 0; c < BOARD_SIZE; c++) {
+          const idx = r * BOARD_SIZE + c;
+
+          if (currentCardId === 4) {
+            // Superposição: Qualquer casa válida
+            gl.children[idx].classList.add('valid-move');
+          } else if (currentCardId === 1) {
+            // Efeito Túnel: Qualquer casa onde o espelho não estoure o tabuleiro
+            const dx = c - myLiveCat.x;
+            const dy = r - myLiveCat.y;
+            const newDeadX = myDeadCat.x - dx;
+            const newDeadY = myDeadCat.y - dy;
+
+            if (newDeadX >= 0 && newDeadX < BOARD_SIZE && newDeadY >= 0 && newDeadY < BOARD_SIZE) {
+              gl.children[idx].classList.add('valid-move');
+            }
+          } else {
+            // Modo Padrão / Espelho: Mover Vivo e verificar se Morto fica dentro do tabuleiro
+            const dx = c - myLiveCat.x;
+            const dy = r - myLiveCat.y;
+            const newDeadX = myDeadCat.x - dx;
+            const newDeadY = myDeadCat.y - dy;
+
+            if (newDeadX >= 0 && newDeadX < BOARD_SIZE && newDeadY >= 0 && newDeadY < BOARD_SIZE) {
+              gl.children[idx].classList.add('valid-move');
+            }
+          }
+        }
+      }
+    }
+
+    function clearValidMoveHighlights() {
+      const gl = document.getElementById('grid-live');
+      for (let i = 0; i < 25; i++) {
+        gl.children[i].classList.remove('valid-move');
+      }
+    }
+
     function handleMyGridClick(type, x, y) {
       if (gameStage === 'SETUP') {
         if (type === 'live') myLiveCat = { x, y };
@@ -744,6 +807,7 @@
         if (currentCardId === 4) {
           if (type === 'live') myLiveCat = { x, y };
           if (type === 'dead') myDeadCat = { x, y };
+          clearValidMoveHighlights();
           finishTurnAfterMove(`Superposição ativada! Gato ${type} reposicionado para (${x},${y}).`);
           return;
         }
@@ -757,6 +821,7 @@
           if (newDeadX >= 0 && newDeadX < BOARD_SIZE && newDeadY >= 0 && newDeadY < BOARD_SIZE) {
             myLiveCat = { x, y };
             myDeadCat = { x: newDeadX, y: newDeadY };
+            clearValidMoveHighlights();
             finishTurnAfterMove(`Efeito Túnel ativado! Salto para (${x},${y}).`);
           } else {
             showAlert('Túnel inválido! Unidade excederia os limites do sistema.');
@@ -773,6 +838,7 @@
           if (newDeadX >= 0 && newDeadX < BOARD_SIZE && newDeadY >= 0 && newDeadY < BOARD_SIZE) {
             myLiveCat = { x, y };
             myDeadCat = { x: newDeadX, y: newDeadY };
+            clearValidMoveHighlights();
             finishTurnAfterMove(`Movimento espelho executado. Vivo em (${x},${y}).`);
           } else {
             showAlert('Coordenadas de espelho inválidas fora da matriz!');
@@ -827,7 +893,10 @@
       
       document.getElementById('card-display').style.display = 'block';
       document.getElementById('card-content').innerHTML = `<strong>🎲 Dado: ${data.diceRoll}</strong><br><strong>Protocolo: ${data.card.name}</strong><br>${data.card.desc}`;
-      setStatus(`Protocolo ativo! Efetue o movimento nos seus tabuleiros.`);
+      setStatus(`Protocolo ativo! Efetue o movimento nas casas destacadas.`);
+      
+      // Destaca as casas válidas com bordas azul neon
+      highlightValidMoves();
     });
 
     function renderMyBoards() {
@@ -917,6 +986,7 @@
       guessLiveTarget = null;
       guessDeadTarget = null;
       
+      clearValidMoveHighlights();
       showMyBoardsOnly();
 
       if (isMyTurn) {
