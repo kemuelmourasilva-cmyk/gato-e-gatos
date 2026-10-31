@@ -226,6 +226,7 @@
     button:hover { background: #22c55e; box-shadow: 0 0 20px rgba(34, 197, 94, 0.7); transform: translateY(-2px); }
     button:disabled { background: #334155; color: #64748b; cursor: not-allowed; box-shadow: none; transform: none; }
 
+    /* ESTILO DO MODAL DE SUCESSO / RELATÓRIO */
     .modal-overlay {
       position: fixed; top: 0; left: 0; width: 100%; height: 100%;
       background: rgba(3, 7, 18, 0.85); backdrop-filter: blur(5px);
@@ -233,9 +234,86 @@
     }
     .modal-content {
       background: #0f172a; border: 2px solid #a855f7; box-shadow: 0 0 25px rgba(168, 85, 247, 0.5);
-      padding: 25px; border-radius: 12px; max-width: 400px; text-align: center; color: #f1f5f9;
+      padding: 25px; border-radius: 12px; max-width: 420px; text-align: center; color: #f1f5f9;
     }
     .modal-content h2 { margin-top: 0; color: #38bdf8; }
+
+    /* POPUP DE ERRO FLUTUANTE ESTILO ERRO DE COMPUTADOR QUÂNTICO */
+    .error-dialog-overlay {
+      position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+      background: rgba(0, 0, 0, 0.75); backdrop-filter: blur(6px);
+      display: none; align-items: center; justify-content: center; z-index: 200;
+      animation: fadeIn 0.2s ease-out;
+    }
+
+    .error-dialog-box {
+      background: #090d16;
+      border: 2px solid #ef4444;
+      box-shadow: 0 0 30px rgba(239, 68, 68, 0.6), inset 0 0 15px rgba(239, 68, 68, 0.2);
+      border-radius: 10px;
+      width: 90%;
+      max-width: 440px;
+      overflow: hidden;
+      animation: popGlitch 0.25s ease-out;
+    }
+
+    .error-dialog-header {
+      background: #991b1b;
+      color: #ffffff;
+      padding: 8px 15px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      font-weight: bold;
+      font-size: 0.9rem;
+      letter-spacing: 1.5px;
+      text-transform: uppercase;
+      box-shadow: 0 2px 5px rgba(0,0,0,0.5);
+    }
+
+    .error-dialog-body {
+      padding: 20px;
+      color: #fca5a5;
+      font-family: 'Courier New', Courier, monospace;
+      font-size: 0.95rem;
+      line-height: 1.5;
+      text-shadow: 0 0 5px rgba(254, 202, 202, 0.3);
+    }
+
+    .error-dialog-footer {
+      padding: 0 20px 18px 20px;
+      text-align: right;
+    }
+
+    .btn-error-ok {
+      background: #ef4444;
+      color: #ffffff;
+      border: none;
+      padding: 8px 22px;
+      font-family: monospace;
+      font-weight: bold;
+      border-radius: 6px;
+      cursor: pointer;
+      box-shadow: 0 0 12px rgba(239, 68, 68, 0.5);
+      transition: all 0.2s;
+    }
+
+    .btn-error-ok:hover {
+      background: #dc2626;
+      box-shadow: 0 0 18px rgba(239, 68, 68, 0.8);
+      transform: scale(1.05);
+    }
+
+    @keyframes fadeIn {
+      from { opacity: 0; }
+      to { opacity: 1; }
+    }
+
+    @keyframes popGlitch {
+      0% { transform: scale(0.8) translateY(-20px); opacity: 0; }
+      50% { transform: scale(1.03); }
+      100% { transform: scale(1) translateY(0); opacity: 1; }
+    }
   </style>
 </head>
 <body>
@@ -307,7 +385,36 @@
     </div>
   </div>
 
+  <!-- MODAL DE ERRO ESTILIZADO (SUBSTITUTO DO ALERT PADRÃO) -->
+  <div id="quantum-error-modal" class="error-dialog-overlay">
+    <div class="error-dialog-box">
+      <div class="error-dialog-header">
+        <span>⚠️ ERROR_SYS // QUANTUM_FAIL</span>
+        <span style="cursor:pointer;" onclick="closeErrorModal()">✕</span>
+      </div>
+      <div id="quantum-error-msg" class="error-dialog-body">
+        [SISTEMA]: Operação inválida detectada.
+      </div>
+      <div class="error-dialog-footer">
+        <button class="btn-error-ok" onclick="closeErrorModal()">[ REINICIAR_DIRETRIZ ]</button>
+      </div>
+    </div>
+  </div>
+
   <script>
+    /* -------------------------------------------------------------
+       0. SISTEMA DE ALERTA DE ERRO CUSTOMIZADO (SUBSTITUTO DO ALERT)
+    ------------------------------------------------------------- */
+    function showAlert(message) {
+      playSound('miss');
+      document.getElementById('quantum-error-msg').innerText = message;
+      document.getElementById('quantum-error-modal').style.display = 'flex';
+    }
+
+    function closeErrorModal() {
+      document.getElementById('quantum-error-modal').style.display = 'none';
+    }
+
     /* -------------------------------------------------------------
        1. CANVAS ANIMADO DE FUNDO (EFEITO MATRIX QUÂNTICO)
     ------------------------------------------------------------- */
@@ -370,30 +477,25 @@
       renderer.setPixelRatio(window.devicePixelRatio);
       containerCell.appendChild(renderer.domElement);
 
-      // Luzes
       const ambientLight = new THREE.AmbientLight(0xffffff, 0.8);
       scene.add(ambientLight);
       const dirLight = new THREE.DirectionalLight(0xfacc15, 1.2);
       dirLight.position.set(2, 4, 3);
       scene.add(dirLight);
 
-      // Grupo do Gato Vivo Preto
       const catGroup = new THREE.Group();
 
-      // Corpo (Esfera Preta Polida)
       const bodyGeo = new THREE.SphereGeometry(0.6, 24, 24);
       const blackMat = new THREE.MeshPhongMaterial({ color: 0x0a0a0a, shininess: 80 });
       const body = new THREE.Mesh(bodyGeo, blackMat);
       body.position.y = 0.2;
       catGroup.add(body);
 
-      // Cabeça
       const headGeo = new THREE.SphereGeometry(0.45, 24, 24);
       const head = new THREE.Mesh(headGeo, blackMat);
       head.position.set(0, 0.7, 0.2);
       catGroup.add(head);
 
-      // Orelhas
       const earGeo = new THREE.ConeGeometry(0.18, 0.35, 16);
       const leftEar = new THREE.Mesh(earGeo, blackMat);
       leftEar.position.set(-0.22, 1.1, 0.2);
@@ -405,7 +507,6 @@
       rightEar.rotation.z = -0.2;
       catGroup.add(rightEar);
 
-      // Olhos Amarelos / Dourados Brilhantes
       const eyeGeo = new THREE.SphereGeometry(0.09, 16, 16);
       const yellowEyeMat = new THREE.MeshBasicMaterial({ color: 0xffd700 });
       
@@ -419,7 +520,6 @@
       rightEye.scale.set(1, 1.4, 0.5);
       catGroup.add(rightEye);
 
-      // Pupilas Pretas
       const pupilGeo = new THREE.SphereGeometry(0.04, 12, 12);
       const pupilMat = new THREE.MeshBasicMaterial({ color: 0x000000 });
       const leftPupil = new THREE.Mesh(pupilGeo, pupilMat);
@@ -431,7 +531,6 @@
 
       scene.add(catGroup);
 
-      // Animação de rotação suave
       let animId;
       function animate() {
         animId = requestAnimationFrame(animate);
@@ -463,10 +562,8 @@
       dirLight.position.set(-2, 4, 3);
       scene.add(dirLight);
 
-      // Grupo do Gato Morto Esquelético
       const catGroup = new THREE.Group();
 
-      // Caveira / Cabeça (Branca luminosa)
       const skullGeo = new THREE.SphereGeometry(0.48, 20, 20);
       const boneMat = new THREE.MeshPhongMaterial({ color: 0xf8fafc, shininess: 100, emissive: 0x334155 });
       const skull = new THREE.Mesh(skullGeo, boneMat);
@@ -474,7 +571,6 @@
       skull.scale.set(1, 0.9, 1);
       catGroup.add(skull);
 
-      // Órbitas dos Olhos (Vazias/Pretas)
       const eyeSocketGeo = new THREE.SphereGeometry(0.13, 12, 12);
       const socketMat = new THREE.MeshBasicMaterial({ color: 0x000000 });
       const leftSocket = new THREE.Mesh(eyeSocketGeo, socketMat);
@@ -485,7 +581,6 @@
       rightSocket.position.set(0.17, 0.65, 0.5);
       catGroup.add(rightSocket);
 
-      // Caixa Torácica / Costelas Pretas com traços brancos
       const spineGeo = new THREE.CylinderGeometry(0.06, 0.06, 0.8, 12);
       const spine = new THREE.Mesh(spineGeo, boneMat);
       spine.position.set(0, 0.0, 0);
@@ -514,7 +609,6 @@
     /* -------------------------------------------------------------
        3. LÓGICA DE JOGO, TABULEIROS E SOCKET.IO
     ------------------------------------------------------------- */
-    // Fallback Mock para io() se o Socket.IO não estiver disponível no servidor local/preview
     const socket = typeof io !== 'undefined' ? io() : {
       on: function(evt, cb) { console.log('[Socket Mock] Listener registrado:', evt); },
       emit: function(evt, data) { 
@@ -575,27 +669,27 @@
           oscillator.stop(audioCtx.currentTime + 0.2);
         } else if (type === 'miss') {
           oscillator.type = 'sawtooth';
-          oscillator.frequency.setValueAtTime(200, audioCtx.currentTime);
-          gainNode.gain.setValueAtTime(0.05, audioCtx.currentTime);
+          oscillator.frequency.setValueAtTime(180, audioCtx.currentTime);
+          gainNode.gain.setValueAtTime(0.08, audioCtx.currentTime);
           oscillator.start();
-          oscillator.stop(audioCtx.currentTime + 0.15);
+          oscillator.stop(audioCtx.currentTime + 0.18);
         }
       } catch (e) {}
     }
 
     function createRoom() {
       const code = document.getElementById('room-code-input').value.trim();
-      if (!code) return alert('Digite o código da sala!');
+      if (!code) return showAlert('Digite o código da sala para prosseguir!');
       socket.emit('createRoom', code);
     }
 
     function joinRoom() {
       const code = document.getElementById('room-code-input').value.trim();
-      if (!code) return alert('Digite o código da sala!');
+      if (!code) return showAlert('Digite o código da sala para prosseguir!');
       socket.emit('joinRoom', code);
     }
 
-    socket.on('errorMsg', (m) => alert(m));
+    socket.on('errorMsg', (m) => showAlert(m));
     socket.on('init', (d) => {
       myPlayerNumber = d.playerNumber;
       document.getElementById('lobby').style.display = 'none';
@@ -665,7 +759,7 @@
             myDeadCat = { x: newDeadX, y: newDeadY };
             finishTurnAfterMove(`Efeito Túnel ativado! Salto para (${x},${y}).`);
           } else {
-            alert('Túnel inválido! Unidade excederia os limites do sistema.');
+            showAlert('Túnel inválido! Unidade excederia os limites do sistema.');
           }
           return;
         }
@@ -681,14 +775,14 @@
             myDeadCat = { x: newDeadX, y: newDeadY };
             finishTurnAfterMove(`Movimento espelho executado. Vivo em (${x},${y}).`);
           } else {
-            alert('Coordenadas de espelho inválidas fora da matriz!');
+            showAlert('Coordenadas de espelho inválidas fora da matriz!');
           }
         } else {
-          alert('No modo padrão, selecione o setor do Gato Vivo para calcular o espelho!');
+          showAlert('No modo padrão, selecione o setor do Gato Vivo para calcular o espelho!');
         }
 
       } else if (isMyTurn && !hasRolledDice) {
-        alert('Execute o Dado Quântico primeiro!');
+        showAlert('Execute o Dado Quântico primeiro!');
       }
     }
 
@@ -711,7 +805,7 @@
       const historyArr = type === 'live' ? enemyLiveHistory : enemyDeadHistory;
 
       if (historyArr[idx] === 'MISS') {
-        alert('Esta coordenada está BLOQUEADA por interferência (❌) do turno anterior!');
+        showAlert('Esta coordenada está BLOQUEADA por interferência (❌) do turno anterior!');
         return;
       }
 
@@ -787,7 +881,7 @@
     }
 
     function confirmSetup() {
-      if (!myLiveCat || !myDeadCat) return alert('Posicione o Gato Vivo e o Gato Morto no tabuleiro!');
+      if (!myLiveCat || !myDeadCat) return showAlert('Posicione o Gato Vivo e o Gato Morto no tabuleiro!');
       socket.emit('setInitialPositions', { live: myLiveCat, dead: myDeadCat });
       document.getElementById('btn-confirm').disabled = true;
       setStatus('Configuração salva. Sincronizando com o oponente...');
@@ -795,7 +889,7 @@
     }
 
     function submitObservation() {
-      if (!guessLiveTarget || !guessDeadTarget) return alert('Selecione alvos em ambos os setores inimigos!');
+      if (!guessLiveTarget || !guessDeadTarget) return showAlert('Selecione alvos em ambos os setores inimigos!');
       socket.emit('observe', { targetLive: guessLiveTarget, targetDead: guessDeadTarget });
       addLog('Varredura de medição quântica disparada.');
       
@@ -890,7 +984,7 @@
       document.getElementById('popup-modal').style.display = 'none';
     }
 
-    socket.on('playerLeft', (m) => { alert(m); location.reload(); });
+    socket.on('playerLeft', (m) => { showAlert(m); location.reload(); });
   </script>
 </body>
 </html>
