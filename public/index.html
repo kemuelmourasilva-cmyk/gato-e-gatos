@@ -20,10 +20,8 @@
 
     #bg-canvas {
       position: fixed;
-      top: 0;
-      left: 0;
-      width: 100vw;
-      height: 100vh;
+      top: 0; left: 0;
+      width: 100vw; height: 100vh;
       z-index: -1;
       pointer-events: none;
     }
@@ -72,7 +70,7 @@
       border-radius: 8px;
       padding: 12px;
       max-width: 650px;
-      height: 110px;
+      height: 100px;
       margin: 0 auto 20px auto;
       overflow-y: auto;
       text-align: left;
@@ -104,49 +102,103 @@
       box-shadow: 0 0 10px rgba(168, 85, 247, 0.3);
     }
 
-    .boards-container { display: flex; justify-content: center; gap: 15px; flex-wrap: wrap; }
-    
+    /* CONTAINER 3D COM PERSPECTIVA */
+    .perspective-container {
+      perspective: 1000px;
+      display: flex;
+      justify-content: center;
+      gap: 30px;
+      flex-wrap: wrap;
+      margin-top: 10px;
+    }
+
+    /* PLACAS DOS TABULEIROS COM EFEITO TILT 3D */
     .board-box {
       background: rgba(15, 23, 42, 0.92);
       border: 2px solid #334155;
-      border-radius: 12px;
-      padding: 12px;
-      box-shadow: 0 4px 20px rgba(0,0,0,0.6);
+      border-radius: 16px;
+      padding: 16px;
+      transform: rotateX(12deg) rotateY(0deg) translateZ(0px);
+      transform-style: preserve-3d;
+      transition: transform 0.4s ease, box-shadow 0.4s ease, opacity 0.4s ease;
+      box-shadow: 0 20px 30px rgba(0, 0, 0, 0.8), inset 0 1px 2px rgba(255, 255, 255, 0.1);
       backdrop-filter: blur(8px);
     }
-    .board-box.live { border-color: #22c55e; box-shadow: 0 0 18px rgba(34, 197, 94, 0.3); }
-    .board-box.dead { border-color: #ef4444; box-shadow: 0 0 18px rgba(239, 68, 68, 0.3); }
-    .board-box.enemy { border-color: #eab308; opacity: 0.4; pointer-events: none; }
-    .board-box.enemy.active { opacity: 1; pointer-events: auto; box-shadow: 0 0 18px rgba(234, 179, 8, 0.4); }
-    
-    .board-title { font-size: 0.95rem; margin-bottom: 8px; font-weight: bold; letter-spacing: 1px; }
 
-    .grid { display: grid; grid-template-columns: repeat(5, 42px); grid-template-rows: repeat(5, 42px); gap: 4px; }
-    
-    .cell {
-      width: 42px; height: 42px; background: rgba(2, 6, 23, 0.9); border: 1px solid #1e293b;
-      border-radius: 6px; display: flex; align-items: center; justify-content: center; font-size: 1.2rem; cursor: pointer; user-select: none;
-      transition: all 0.2s ease;
+    .board-box:hover {
+      transform: rotateX(4deg) translateZ(10px);
     }
-    .cell:hover { background: #1e293b; border-color: #38bdf8; box-shadow: 0 0 8px rgba(56, 189, 248, 0.5); }
-    .cell.cat-live { background: #15803d; border-color: #22c55e; }
-    .cell.cat-dead { background: #b91c1c; border-color: #ef4444; }
-    .cell.guess-live { background: #1d4ed8; border-color: #3b82f6; }
-    .cell.guess-dead { background: #7e22ce; border-color: #a855f7; }
+
+    .board-box.live { 
+      border-color: #22c55e; 
+      box-shadow: 0 15px 35px rgba(34, 197, 94, 0.25), inset 0 0 15px rgba(34, 197, 94, 0.1); 
+    }
+    .board-box.dead { 
+      border-color: #ef4444; 
+      box-shadow: 0 15px 35px rgba(239, 68, 68, 0.25), inset 0 0 15px rgba(239, 68, 68, 0.1); 
+    }
+    .board-box.enemy { 
+      border-color: #eab308; 
+      box-shadow: 0 15px 35px rgba(234, 179, 8, 0.25), inset 0 0 15px rgba(234, 179, 8, 0.1); 
+    }
+
+    .board-title { 
+      font-size: 1rem; 
+      margin-bottom: 12px; 
+      font-weight: bold; 
+      letter-spacing: 1.5px;
+      text-shadow: 0 0 8px currentColor;
+      transform: translateZ(15px);
+    }
+
+    .grid { 
+      display: grid; 
+      grid-template-columns: repeat(5, 46px); 
+      grid-template-rows: repeat(5, 46px); 
+      gap: 6px; 
+      transform-style: preserve-3d;
+    }
+    
+    /* CÉLULAS 3D ELEVADAS */
+    .cell {
+      width: 46px; height: 46px; 
+      background: rgba(2, 6, 23, 0.95); 
+      border: 1px solid #1e293b;
+      border-radius: 8px; 
+      display: flex; align-items: center; justify-content: center; 
+      font-size: 1.3rem; 
+      cursor: pointer; 
+      user-select: none;
+      transition: all 0.2s ease;
+      box-shadow: 0 4px 6px rgba(0,0,0,0.5), inset 0 1px 1px rgba(255,255,255,0.05);
+      transform: translateZ(5px);
+    }
+
+    .cell:hover { 
+      background: #1e293b; 
+      border-color: #38bdf8; 
+      box-shadow: 0 0 12px rgba(56, 189, 248, 0.6);
+      transform: translateZ(15px) scale(1.05);
+    }
+
+    .cell.cat-live { background: #15803d; border-color: #22c55e; box-shadow: 0 0 15px #22c55e; transform: translateZ(10px); }
+    .cell.cat-dead { background: #b91c1c; border-color: #ef4444; box-shadow: 0 0 15px #ef4444; transform: translateZ(10px); }
+    .cell.guess-live { background: #1d4ed8; border-color: #3b82f6; box-shadow: 0 0 15px #3b82f6; transform: translateZ(10px); }
+    .cell.guess-dead { background: #7e22ce; border-color: #a855f7; box-shadow: 0 0 15px #a855f7; transform: translateZ(10px); }
     .cell.missed { background: #0f172a; color: #f87171; font-weight: bold; border-color: #7f1d1d; }
-    .cell.hit { background: #14532d; color: #4ade80; font-weight: bold; border-color: #166534; }
+    .cell.hit { background: #14532d; color: #4ade80; font-weight: bold; border-color: #166534; box-shadow: 0 0 12px #22c55e; }
     .cell.blocked { background: #1e1b4b; color: #475569; cursor: not-allowed; border-color: #312e81; }
 
     .controls { margin-top: 25px; display: flex; justify-content: center; gap: 15px; }
     
     button {
       background: #16a34a; color: white; border: none; padding: 12px 24px;
-      font-size: 1rem; border-radius: 6px; cursor: pointer; font-family: monospace; font-weight: bold;
-      box-shadow: 0 0 12px rgba(22, 163, 74, 0.4);
+      font-size: 1rem; border-radius: 8px; cursor: pointer; font-family: monospace; font-weight: bold;
+      box-shadow: 0 4px 15px rgba(22, 163, 74, 0.4);
       transition: all 0.2s;
     }
-    button:hover { background: #22c55e; box-shadow: 0 0 18px rgba(34, 197, 94, 0.6); transform: translateY(-1px); }
-    button:disabled { background: #334155; color: #64748b; cursor: not-allowed; box-shadow: none; }
+    button:hover { background: #22c55e; box-shadow: 0 0 20px rgba(34, 197, 94, 0.7); transform: translateY(-2px); }
+    button:disabled { background: #334155; color: #64748b; cursor: not-allowed; box-shadow: none; transform: none; }
 
     .modal-overlay {
       position: fixed; top: 0; left: 0; width: 100%; height: 100%;
@@ -164,8 +216,8 @@
 
   <canvas id="bg-canvas"></canvas>
 
-  <h1>⚡ QUANTUM_CAT_LAB // v3.0 ⚡</h1>
-  <h3>Sistema de Pontuação & Interferência de Campo</h3>
+  <h1>⚡ QUANTUM_CAT_LAB // v3.0 3D ⚡</h1>
+  <h3>Sistema de Pontuação & Matriz Holográfica</h3>
 
   <div id="lobby">
     <h2>[ CONECTAR_AO_TERMINAL ]</h2>
@@ -179,7 +231,7 @@
     <div id="status-bar">[SISTEMA PRONTO] Aguardando diretrizes...</div>
 
     <div id="log-box">
-      <div>[SYS_CORE] Núcleo Quântico inicializado com pontuação alvo = 3 pontos.</div>
+      <div>[SYS_CORE] Matriz 3D Quântica pronta. Pontuação Alvo = 3 pts.</div>
     </div>
 
     <div id="quantum-panel" class="quantum-panel">
@@ -190,20 +242,25 @@
       </div>
     </div>
 
-    <div class="boards-container">
-      <div class="board-box live">
+    <div class="perspective-container">
+      <!-- FASE 1: SEUS TABULEIROS (VIVO & MORTO) -->
+      <div id="box-my-live" class="board-box live">
         <div class="board-title" style="color: #4ade80;">SEU GATO VIVO (|Ψ⟩)</div>
         <div id="grid-live" class="grid"></div>
       </div>
-      <div class="board-box dead">
+      
+      <div id="box-my-dead" class="board-box dead">
         <div class="board-title" style="color: #f87171;">SEU GATO MORTO (|Φ⟩)</div>
         <div id="grid-dead" class="grid"></div>
       </div>
-      <div id="box-enemy-live" class="board-box enemy">
+
+      <!-- FASE 2: TABULEIROS INIMIGOS (SÓ APARECEM NO DISPARO) -->
+      <div id="box-enemy-live" class="board-box enemy" style="display: none;">
         <div class="board-title" style="color: #facc15;">ALVO: VIVO INIMIGO</div>
         <div id="grid-enemy-live" class="grid"></div>
       </div>
-      <div id="box-enemy-dead" class="board-box enemy">
+
+      <div id="box-enemy-dead" class="board-box enemy" style="display: none;">
         <div class="board-title" style="color: #facc15;">ALVO: MORTO INIMIGO</div>
         <div id="grid-enemy-dead" class="grid"></div>
       </div>
@@ -224,6 +281,7 @@
   </div>
 
   <script>
+    /* Animação Canvas Matrix de Fundo */
     const canvas = document.getElementById('bg-canvas');
     const ctx = canvas.getContext('2d');
 
@@ -259,6 +317,7 @@
     }
     setInterval(drawMatrix, 40);
 
+    /* Lógica do Jogo */
     const socket = io();
     const BOARD_SIZE = 5;
 
@@ -334,7 +393,22 @@
       setStatus(`TERMINAL CONECTADO - JOGADOR ${myPlayerNumber}. Posicione suas unidades.`);
       addLog(`Acesso autorizado como Jogador ${myPlayerNumber}.`);
       buildAllGrids();
+      showMyBoardsOnly();
     });
+
+    function showMyBoardsOnly() {
+      document.getElementById('box-my-live').style.display = 'block';
+      document.getElementById('box-my-dead').style.display = 'block';
+      document.getElementById('box-enemy-live').style.display = 'none';
+      document.getElementById('box-enemy-dead').style.display = 'none';
+    }
+
+    function showEnemyBoardsOnly() {
+      document.getElementById('box-my-live').style.display = 'none';
+      document.getElementById('box-my-dead').style.display = 'none';
+      document.getElementById('box-enemy-live').style.display = 'block';
+      document.getElementById('box-enemy-dead').style.display = 'block';
+    }
 
     function buildAllGrids() {
       buildGrid('grid-live', (x, y) => handleMyGridClick('live', x, y));
@@ -413,10 +487,10 @@
       socket.emit('makeMove', { newLive: myLiveCat, newDead: myDeadCat });
       addLog(logMsg);
       
-      document.getElementById('box-enemy-live').classList.add('active');
-      document.getElementById('box-enemy-dead').classList.add('active');
+      // MUDANÇA DE FASE VISUAL: Oculta seus tabuleiros e exibe os 2 tabuleiros inimigos para disparo
+      showEnemyBoardsOnly();
       
-      setStatus('Movimento computado! Selecione os alvos no setor inimigo.');
+      setStatus('Movimento computado! Selecione os alvos no setor inimigo e clique em Disparar.');
       document.getElementById('btn-shoot').style.display = 'inline-block';
       document.getElementById('btn-shoot').disabled = false;
       document.getElementById('quantum-panel').style.display = 'none';
@@ -450,7 +524,7 @@
       
       document.getElementById('card-display').style.display = 'block';
       document.getElementById('card-content').innerHTML = `<strong>🎲 Dado: ${data.diceRoll}</strong><br><strong>Protocolo: ${data.card.name}</strong><br>${data.card.desc}`;
-      setStatus(`Protocolo ativo! Efetue o movimento na matriz.`);
+      setStatus(`Protocolo ativo! Efetue o movimento nos seus tabuleiros.`);
     });
 
     function renderMyBoards() {
@@ -492,11 +566,11 @@
     }
 
     function confirmSetup() {
-      if (!myLiveCat || !myDeadCat) return alert('Posicione o Gato Vivo e o Gato Morto na matriz!');
+      if (!myLiveCat || !myDeadCat) return alert('Posicione o Gato Vivo e o Gato Morto!');
       socket.emit('setInitialPositions', { live: myLiveCat, dead: myDeadCat });
       document.getElementById('btn-confirm').disabled = true;
       setStatus('Configuração salva. Sincronizando com o oponente...');
-      addLog('Posições iniciais bloqueadas no sistema.');
+      addLog('Posições iniciais confirmadas.');
     }
 
     function submitObservation() {
@@ -505,8 +579,6 @@
       addLog('Varredura de medição quântica disparada.');
       
       document.getElementById('btn-shoot').style.display = 'none';
-      document.getElementById('box-enemy-live').classList.remove('active');
-      document.getElementById('box-enemy-dead').classList.remove('active');
     }
 
     function setStatus(msg) { document.getElementById('status-bar').innerText = msg; }
@@ -529,7 +601,9 @@
       currentCardId = null;
       guessLiveTarget = null;
       guessDeadTarget = null;
-      renderEnemyGridState();
+      
+      // Sempre retorna para a visão dos seus tabuleiros no início do seu turno
+      showMyBoardsOnly();
 
       if (isMyTurn) {
         setStatus('Seu turno! Execute o Dado Quântico.');
@@ -540,8 +614,6 @@
       } else {
         setStatus("Processando turno do oponente...");
         document.getElementById('quantum-panel').style.display = 'none';
-        document.getElementById('box-enemy-live').classList.remove('active');
-        document.getElementById('box-enemy-dead').classList.remove('active');
       }
     }
 
@@ -564,8 +636,8 @@
       showModal(
         '⚛️ RELATÓRIO DE VARREDURA',
         `Medição executada. Pontuação atual: <strong>${d.score} / 3 pts</strong><br><br>
-        • Gato Vivo: ${d.hitLive ? '🎯 IMPACTO NO ALVO! (+1 pt)' : '❌ Vazio (Bloqueado)'}<br>
-        • Gato Morto: ${d.hitDead ? '🎯 IMPACTO NO ALVO! (+1 pt)' : '❌ Vazio (Bloqueado)'}`
+        • Gato Vivo: ${d.hitLive ? '🎯 IMPACTO NO ALVO! (+1 pt)' : '❌ Vazio'}<br>
+        • Gato Morto: ${d.hitDead ? '🎯 IMPACTO NO ALVO! (+1 pt)' : '❌ Vazio'}`
       );
     });
 
