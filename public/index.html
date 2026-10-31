@@ -3,8 +3,11 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Gatos e Gatos: Vivo ou Morto, És a Questão!</title>
-  <script src="/socket.io/socket.io.js"></script>
+  <title>Gatos e Gatos: Vivo ou Morto, És a Questão! 3D</title>
+
+  <!-- Socket.io com fallback CDN e Three.js para renderização 3D real -->
+  <script src="/socket.io/socket.io.js" onerror="this.onerror=null;this.src='https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.7.5/socket.io.min.js';"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
   <style>
     * { box-sizing: border-box; }
     body {
@@ -13,11 +16,12 @@
       color: #38bdf8;
       text-align: center;
       margin: 0;
-      padding: 20px;
+      padding: 15px;
       overflow-x: hidden;
       position: relative;
     }
 
+    /* Canvas de fundo Matrix Quântico */
     #bg-canvas {
       position: fixed;
       top: 0; left: 0;
@@ -63,6 +67,7 @@
       backdrop-filter: blur(8px);
     }
 
+    /* Terminal de Laboratório Quântico */
     #log-box {
       background: rgba(0, 0, 0, 0.9);
       border: 1px solid #22c55e;
@@ -102,9 +107,9 @@
       box-shadow: 0 0 10px rgba(168, 85, 247, 0.3);
     }
 
-    /* CONTAINER 3D COM PERSPECTIVA */
+    /* EFEITO PERSPECTIVA E TILT 3D NOS TABULEIROS */
     .perspective-container {
-      perspective: 1000px;
+      perspective: 1200px;
       display: flex;
       justify-content: center;
       gap: 30px;
@@ -112,21 +117,20 @@
       margin-top: 10px;
     }
 
-    /* PLACAS DOS TABULEIROS COM EFEITO TILT 3D */
     .board-box {
       background: rgba(15, 23, 42, 0.92);
       border: 2px solid #334155;
       border-radius: 16px;
       padding: 16px;
-      transform: rotateX(12deg) rotateY(0deg) translateZ(0px);
+      transform: rotateX(15deg) rotateY(0deg) translateZ(0px);
       transform-style: preserve-3d;
-      transition: transform 0.4s ease, box-shadow 0.4s ease, opacity 0.4s ease;
+      transition: transform 0.4s ease, box-shadow 0.4s ease;
       box-shadow: 0 20px 30px rgba(0, 0, 0, 0.8), inset 0 1px 2px rgba(255, 255, 255, 0.1);
       backdrop-filter: blur(8px);
     }
 
     .board-box:hover {
-      transform: rotateX(4deg) translateZ(10px);
+      transform: rotateX(5deg) translateZ(10px);
     }
 
     .board-box.live { 
@@ -153,25 +157,27 @@
 
     .grid { 
       display: grid; 
-      grid-template-columns: repeat(5, 46px); 
-      grid-template-rows: repeat(5, 46px); 
+      grid-template-columns: repeat(5, 52px); 
+      grid-template-rows: repeat(5, 52px); 
       gap: 6px; 
       transform-style: preserve-3d;
     }
     
-    /* CÉLULAS 3D ELEVADAS */
+    /* CÉLULAS DO TABULEIRO QUE SUPORTAM CANVASES 3D DE THREE.JS */
     .cell {
-      width: 46px; height: 46px; 
+      width: 52px; height: 52px; 
       background: rgba(2, 6, 23, 0.95); 
       border: 1px solid #1e293b;
       border-radius: 8px; 
       display: flex; align-items: center; justify-content: center; 
-      font-size: 1.3rem; 
+      font-size: 1.4rem; 
       cursor: pointer; 
       user-select: none;
+      position: relative;
       transition: all 0.2s ease;
       box-shadow: 0 4px 6px rgba(0,0,0,0.5), inset 0 1px 1px rgba(255,255,255,0.05);
       transform: translateZ(5px);
+      overflow: hidden;
     }
 
     .cell:hover { 
@@ -181,19 +187,25 @@
       transform: translateZ(15px) scale(1.05);
     }
 
-    /* Gato Vivo: Preto com olhos amarelos marcantes */
+    .cell canvas {
+      position: absolute;
+      top: 0; left: 0;
+      width: 100%; height: 100%;
+      pointer-events: none;
+    }
+
+    /* Estilização para o Gato Vivo 3D e Gato Morto 3D */
     .cell.cat-live { 
       background: #050505; 
       border-color: #facc15; 
-      box-shadow: 0 0 15px rgba(250, 204, 21, 0.7); 
+      box-shadow: 0 0 15px rgba(250, 204, 21, 0.8); 
       transform: translateZ(12px); 
     }
 
-    /* Gato Morto: Preto com traços esqueléticos brancos */
     .cell.cat-dead { 
       background: #000000; 
       border-color: #f87171; 
-      box-shadow: 0 0 15px rgba(248, 113, 113, 0.5); 
+      box-shadow: 0 0 15px rgba(248, 113, 113, 0.6); 
       transform: translateZ(12px); 
     }
 
@@ -228,10 +240,11 @@
 </head>
 <body>
 
+  <!-- Canvas da Animação Matrix de Fundo -->
   <canvas id="bg-canvas"></canvas>
 
-  <h1>⚡ QUANTUM_CAT_LAB // v3.0 3D ⚡</h1>
-  <h3>Gato Vivo (Preto/Olhos Dourados) & Gato Morto (Esquelético)</h3>
+  <h1>⚡ QUANTUM_CAT_LAB // v3.0 3D REAL ⚡</h1>
+  <h3>Modelos 3D Procedurais WebGL: Gato Preto (Olhos Dourados) & Gato Esquelético</h3>
 
   <div id="lobby">
     <h2>[ CONECTAR_AO_TERMINAL ]</h2>
@@ -245,7 +258,7 @@
     <div id="status-bar">[SISTEMA PRONTO] Aguardando diretrizes...</div>
 
     <div id="log-box">
-      <div>[SYS_CORE] Matriz 3D Quântica pronta. Pontuação Alvo = 3 pts.</div>
+      <div>[SYS_CORE] Matriz 3D Quântica pronta com WebGL ativado. Alvo = 3 pts.</div>
     </div>
 
     <div id="quantum-panel" class="quantum-panel">
@@ -257,18 +270,18 @@
     </div>
 
     <div class="perspective-container">
-      <!-- FASE 1: SEUS TABULEIROS (VIVO & MORTO) -->
+      <!-- FASE 1: SEUS TABULEIROS 3D (VIVO & MORTO) -->
       <div id="box-my-live" class="board-box live">
-        <div class="board-title" style="color: #facc15;">SEU GATO VIVO (|Ψ⟩) [PRETO/DOURADO]</div>
+        <div class="board-title" style="color: #facc15;">SEU GATO VIVO (|Ψ⟩) [PRETO 3D / OLHOS DOURADOS]</div>
         <div id="grid-live" class="grid"></div>
       </div>
       
       <div id="box-my-dead" class="board-box dead">
-        <div class="board-title" style="color: #f87171;">SEU GATO MORTO (|Φ⟩) [ESQUELÉTICO]</div>
+        <div class="board-title" style="color: #f87171;">SEU GATO MORTO (|Φ⟩) [ESQUELÉTICO 3D]</div>
         <div id="grid-dead" class="grid"></div>
       </div>
 
-      <!-- FASE 2: TABULEIROS INIMIGOS (SÓ APARECEM NO DISPARO) -->
+      <!-- FASE 2: TABULEIROS INIMIGOS (EXIBIDOS SÓ NO MOMENTO DE DISPARO) -->
       <div id="box-enemy-live" class="board-box enemy" style="display: none;">
         <div class="board-title" style="color: #38bdf8;">ALVO: VIVO INIMIGO</div>
         <div id="grid-enemy-live" class="grid"></div>
@@ -295,16 +308,18 @@
   </div>
 
   <script>
-    /* Animação Canvas Matrix de Fundo */
-    const canvas = document.getElementById('bg-canvas');
-    const ctx = canvas.getContext('2d');
+    /* -------------------------------------------------------------
+       1. CANVAS ANIMADO DE FUNDO (EFEITO MATRIX QUÂNTICO)
+    ------------------------------------------------------------- */
+    const bgCanvas = document.getElementById('bg-canvas');
+    const bgCtx = bgCanvas.getContext('2d');
 
-    function resizeCanvas() {
-      canvas.width = window.innerWidth;
-      canvas.height = window.innerHeight;
+    function resizeBgCanvas() {
+      bgCanvas.width = window.innerWidth;
+      bgCanvas.height = window.innerHeight;
     }
-    resizeCanvas();
-    window.addEventListener('resize', resizeCanvas);
+    resizeBgCanvas();
+    window.addEventListener('resize', resizeBgCanvas);
 
     const chars = 'ΨΦℏ010101|Ψ⟩|Φ⟩01ΔxΔp';
     const fontSize = 14;
@@ -312,18 +327,18 @@
     const drops = Array(columns).fill(1);
 
     function drawMatrix() {
-      ctx.fillStyle = 'rgba(3, 7, 18, 0.15)';
-      ctx.fillRect(0, 0, canvas.width, canvas.height);
+      bgCtx.fillStyle = 'rgba(3, 7, 18, 0.15)';
+      bgCtx.fillRect(0, 0, bgCanvas.width, bgCanvas.height);
 
-      ctx.fillStyle = '#22c55e';
-      ctx.font = `${fontSize}px monospace`;
+      bgCtx.fillStyle = '#22c55e';
+      bgCtx.font = `${fontSize}px monospace`;
 
       for (let i = 0; i < drops.length; i++) {
         const text = chars.charAt(Math.floor(Math.random() * chars.length));
-        ctx.fillStyle = Math.random() > 0.85 ? '#38bdf8' : '#22c55e';
-        ctx.fillText(text, i * fontSize, drops[i] * fontSize);
+        bgCtx.fillStyle = Math.random() > 0.85 ? '#38bdf8' : '#22c55e';
+        bgCtx.fillText(text, i * fontSize, drops[i] * fontSize);
 
-        if (drops[i] * fontSize > canvas.height && Math.random() > 0.975) {
+        if (drops[i] * fontSize > bgCanvas.height && Math.random() > 0.975) {
           drops[i] = 0;
         }
         drops[i]++;
@@ -331,8 +346,189 @@
     }
     setInterval(drawMatrix, 40);
 
-    /* Lógica do Jogo */
-    const socket = io();
+    /* -------------------------------------------------------------
+       2. GERADOR DE MODELOS 3D PROCEDURAIS EM CANVASES VIA THREE.JS
+    ------------------------------------------------------------- */
+    let activeAnimationLoops = [];
+
+    function clearCell3D(containerCell) {
+      containerCell.innerHTML = '';
+    }
+
+    function renderLiveCat3D(containerCell) {
+      clearCell3D(containerCell);
+      const width = containerCell.clientWidth || 52;
+      const height = containerCell.clientHeight || 52;
+
+      const scene = new THREE.Scene();
+      const camera = new THREE.PerspectiveCamera(45, width / height, 0.1, 1000);
+      camera.position.set(0, 1.2, 3.5);
+      camera.lookAt(0, 0.2, 0);
+
+      const renderer = new THREE.WebGLRenderer({ alpha: true, antialias: true });
+      renderer.setSize(width, height);
+      renderer.setPixelRatio(window.devicePixelRatio);
+      containerCell.appendChild(renderer.domElement);
+
+      // Luzes
+      const ambientLight = new THREE.AmbientLight(0xffffff, 0.8);
+      scene.add(ambientLight);
+      const dirLight = new THREE.DirectionalLight(0xfacc15, 1.2);
+      dirLight.position.set(2, 4, 3);
+      scene.add(dirLight);
+
+      // Grupo do Gato Vivo Preto
+      const catGroup = new THREE.Group();
+
+      // Corpo (Esfera Preta Polida)
+      const bodyGeo = new THREE.SphereGeometry(0.6, 24, 24);
+      const blackMat = new THREE.MeshPhongMaterial({ color: 0x0a0a0a, shininess: 80 });
+      const body = new THREE.Mesh(bodyGeo, blackMat);
+      body.position.y = 0.2;
+      catGroup.add(body);
+
+      // Cabeça
+      const headGeo = new THREE.SphereGeometry(0.45, 24, 24);
+      const head = new THREE.Mesh(headGeo, blackMat);
+      head.position.set(0, 0.7, 0.2);
+      catGroup.add(head);
+
+      // Orelhas
+      const earGeo = new THREE.ConeGeometry(0.18, 0.35, 16);
+      const leftEar = new THREE.Mesh(earGeo, blackMat);
+      leftEar.position.set(-0.22, 1.1, 0.2);
+      leftEar.rotation.z = 0.2;
+      catGroup.add(leftEar);
+
+      const rightEar = new THREE.Mesh(earGeo, blackMat);
+      rightEar.position.set(0.22, 1.1, 0.2);
+      rightEar.rotation.z = -0.2;
+      catGroup.add(rightEar);
+
+      // Olhos Amarelos / Dourados Brilhantes
+      const eyeGeo = new THREE.SphereGeometry(0.09, 16, 16);
+      const yellowEyeMat = new THREE.MeshBasicMaterial({ color: 0xffd700 });
+      
+      const leftEye = new THREE.Mesh(eyeGeo, yellowEyeMat);
+      leftEye.position.set(-0.16, 0.75, 0.58);
+      leftEye.scale.set(1, 1.4, 0.5);
+      catGroup.add(leftEye);
+
+      const rightEye = new THREE.Mesh(eyeGeo, yellowEyeMat);
+      rightEye.position.set(0.16, 0.75, 0.58);
+      rightEye.scale.set(1, 1.4, 0.5);
+      catGroup.add(rightEye);
+
+      // Pupilas Pretas
+      const pupilGeo = new THREE.SphereGeometry(0.04, 12, 12);
+      const pupilMat = new THREE.MeshBasicMaterial({ color: 0x000000 });
+      const leftPupil = new THREE.Mesh(pupilGeo, pupilMat);
+      leftPupil.position.set(-0.16, 0.75, 0.62);
+      catGroup.add(leftPupil);
+      const rightPupil = new THREE.Mesh(pupilGeo, pupilMat);
+      rightPupil.position.set(0.16, 0.75, 0.62);
+      catGroup.add(rightPupil);
+
+      scene.add(catGroup);
+
+      // Animação de rotação suave
+      let animId;
+      function animate() {
+        animId = requestAnimationFrame(animate);
+        catGroup.rotation.y += 0.02;
+        renderer.render(scene, camera);
+      }
+      animate();
+      activeAnimationLoops.push(animId);
+    }
+
+    function renderDeadCat3D(containerCell) {
+      clearCell3D(containerCell);
+      const width = containerCell.clientWidth || 52;
+      const height = containerCell.clientHeight || 52;
+
+      const scene = new THREE.Scene();
+      const camera = new THREE.PerspectiveCamera(45, width / height, 0.1, 1000);
+      camera.position.set(0, 1.2, 3.5);
+      camera.lookAt(0, 0.2, 0);
+
+      const renderer = new THREE.WebGLRenderer({ alpha: true, antialias: true });
+      renderer.setSize(width, height);
+      renderer.setPixelRatio(window.devicePixelRatio);
+      containerCell.appendChild(renderer.domElement);
+
+      const ambientLight = new THREE.AmbientLight(0xffffff, 0.6);
+      scene.add(ambientLight);
+      const dirLight = new THREE.DirectionalLight(0xf87171, 1.5);
+      dirLight.position.set(-2, 4, 3);
+      scene.add(dirLight);
+
+      // Grupo do Gato Morto Esquelético
+      const catGroup = new THREE.Group();
+
+      // Caveira / Cabeça (Branca luminosa)
+      const skullGeo = new THREE.SphereGeometry(0.48, 20, 20);
+      const boneMat = new THREE.MeshPhongMaterial({ color: 0xf8fafc, shininess: 100, emissive: 0x334155 });
+      const skull = new THREE.Mesh(skullGeo, boneMat);
+      skull.position.set(0, 0.6, 0.1);
+      skull.scale.set(1, 0.9, 1);
+      catGroup.add(skull);
+
+      // Órbitas dos Olhos (Vazias/Pretas)
+      const eyeSocketGeo = new THREE.SphereGeometry(0.13, 12, 12);
+      const socketMat = new THREE.MeshBasicMaterial({ color: 0x000000 });
+      const leftSocket = new THREE.Mesh(eyeSocketGeo, socketMat);
+      leftSocket.position.set(-0.17, 0.65, 0.5);
+      catGroup.add(leftSocket);
+
+      const rightSocket = new THREE.Mesh(eyeSocketGeo, socketMat);
+      rightSocket.position.set(0.17, 0.65, 0.5);
+      catGroup.add(rightSocket);
+
+      // Caixa Torácica / Costelas Pretas com traços brancos
+      const spineGeo = new THREE.CylinderGeometry(0.06, 0.06, 0.8, 12);
+      const spine = new THREE.Mesh(spineGeo, boneMat);
+      spine.position.set(0, 0.0, 0);
+      catGroup.add(spine);
+
+      for (let i = 0; i < 3; i++) {
+        const ribGeo = new THREE.TorusGeometry(0.35 - i * 0.05, 0.03, 8, 20, Math.PI * 1.2);
+        const rib = new THREE.Mesh(ribGeo, boneMat);
+        rib.rotation.x = Math.PI / 2;
+        rib.position.set(0, 0.2 - i * 0.18, 0.05);
+        catGroup.add(rib);
+      }
+
+      scene.add(catGroup);
+
+      let animId;
+      function animate() {
+        animId = requestAnimationFrame(animate);
+        catGroup.rotation.y -= 0.025;
+        renderer.render(scene, camera);
+      }
+      animate();
+      activeAnimationLoops.push(animId);
+    }
+
+    /* -------------------------------------------------------------
+       3. LÓGICA DE JOGO, TABULEIROS E SOCKET.IO
+    ------------------------------------------------------------- */
+    // Fallback Mock para io() se o Socket.IO não estiver disponível no servidor local/preview
+    const socket = typeof io !== 'undefined' ? io() : {
+      on: function(evt, cb) { console.log('[Socket Mock] Listener registrado:', evt); },
+      emit: function(evt, data) { 
+        console.log('[Socket Mock] Evento emitido:', evt, data);
+        if (evt === 'createRoom' || evt === 'joinRoom') {
+          setTimeout(() => {
+            const initCb = this._listeners['init'];
+            if (initCb) initCb({ playerNumber: 1, boardSize: 5, roomCode: data });
+          }, 100);
+        }
+      },
+      _listeners: {}
+    };
+
     const BOARD_SIZE = 5;
 
     let myPlayerNumber = null;
@@ -543,17 +739,23 @@
     function renderMyBoards() {
       const gl = document.getElementById('grid-live');
       const gd = document.getElementById('grid-dead');
-      for(let i=0; i<25; i++) {
-        gl.children[i].className = 'cell'; gl.children[i].innerHTML = '';
-        gd.children[i].className = 'cell'; gd.children[i].innerHTML = '';
+      
+      for (let i = 0; i < 25; i++) {
+        gl.children[i].className = 'cell'; 
+        clearCell3D(gl.children[i]);
+        gd.children[i].className = 'cell'; 
+        clearCell3D(gd.children[i]);
       }
-      if (myLiveCat) { 
-        gl.children[myLiveCat.y * BOARD_SIZE + myLiveCat.x].className = 'cell cat-live'; 
-        gl.children[myLiveCat.y * BOARD_SIZE + myLiveCat.x].innerHTML = '🐈‍⬛'; // Gato preto
+
+      if (myLiveCat) {
+        const liveCell = gl.children[myLiveCat.y * BOARD_SIZE + myLiveCat.x];
+        liveCell.className = 'cell cat-live';
+        renderLiveCat3D(liveCell);
       }
-      if (myDeadCat) { 
-        gd.children[myDeadCat.y * BOARD_SIZE + myDeadCat.x].className = 'cell cat-dead'; 
-        gd.children[myDeadCat.y * BOARD_SIZE + myDeadCat.x].innerHTML = '💀'; // Caveira / Esqueleto estilizado
+      if (myDeadCat) {
+        const deadCell = gd.children[myDeadCat.y * BOARD_SIZE + myDeadCat.x];
+        deadCell.className = 'cell cat-dead';
+        renderDeadCat3D(deadCell);
       }
     }
 
@@ -561,7 +763,7 @@
       const gel = document.getElementById('grid-enemy-live');
       const ged = document.getElementById('grid-enemy-dead');
 
-      for(let i=0; i<25; i++) {
+      for (let i = 0; i < 25; i++) {
         const liveStatus = enemyLiveHistory[i];
         const deadStatus = enemyDeadHistory[i];
 
@@ -585,11 +787,11 @@
     }
 
     function confirmSetup() {
-      if (!myLiveCat || !myDeadCat) return alert('Posicione o Gato Vivo e o Gato Morto!');
+      if (!myLiveCat || !myDeadCat) return alert('Posicione o Gato Vivo e o Gato Morto no tabuleiro!');
       socket.emit('setInitialPositions', { live: myLiveCat, dead: myDeadCat });
       document.getElementById('btn-confirm').disabled = true;
       setStatus('Configuração salva. Sincronizando com o oponente...');
-      addLog('Posições iniciais confirmadas.');
+      addLog('Posições iniciais confirmadas no sistema.');
     }
 
     function submitObservation() {
